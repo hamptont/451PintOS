@@ -1,6 +1,0 @@
-[submodule "pintoss"]
-	path = pintoss
-	url = http://github.com/willscott/pintos.git
-[submodule "pintOS"]
-	path = pintOS
-	url = http://github.com/willscott/pintos.git
