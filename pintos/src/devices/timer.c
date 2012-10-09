@@ -89,6 +89,11 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
+  if (ticks < 0) 
+  {
+    return;
+  }
+
   ASSERT (intr_get_level () == INTR_ON);
 	// update the sleep_ticks field to reflect the requested sleep ticks
 	thread_current()->sleep_ticks = ticks;
@@ -105,21 +110,22 @@ timer_sleep (int64_t ticks)
  */
 void
 timer_wake (struct thread *t, void *aux) {
-	// Ensures we don't try to unblock a running thread
-	if (t->status == THREAD_BLOCKED)
-	{
-		// if the thread is still counting down, decrement sleep_ticks
-		if (t->sleep_ticks > 0) 
-		{
-			t->sleep_ticks--;
-			// time to wake up the thread, so we call thread_unblock(), which
-			// adds it to the ready list
-			if (t->sleep_ticks == 0) 
-			{
-				thread_unblock(t);
-			}
-		}
-	}
+  // Ensures we don't try to unblock a running thread
+  if (t->status == THREAD_BLOCKED)
+  {
+    // if the thread is still counting down, decrement sleep_ticks
+    if (t->sleep_ticks > 0) 
+    {
+       t->sleep_ticks--;     
+      // time to wake up the thread, so we call thread_unblock(), which
+    }
+		
+    // adds it to the ready list
+    if (t->sleep_ticks == 0) 
+    {
+      thread_unblock(t);
+    }	
+  }
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
