@@ -620,6 +620,9 @@ schedule (void)
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
 
+	//printf("The current thread is: %s\n", cur->name);
+	//printf("the next thread is: %s\n\n", next->name);
+
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);

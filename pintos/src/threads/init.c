@@ -66,6 +66,8 @@ static char **parse_options (char **argv);
 static void run_actions (char **argv);
 static void usage (void);
 
+void yielder(void);
+
 #ifdef FILESYS
 static void locate_block_devices (void);
 static void locate_block_device (enum block_type, const char *name);
@@ -159,6 +161,10 @@ main (void)
 
   printf ("Boot complete.\n");
   
+	tid_t t1 = thread_create("first_yielder", PRI_DEFAULT, yielder, NULL);
+	tid_t t2 = thread_create("second_yielder", PRI_DEFAULT, yielder, NULL);
+	thread_yield();
+
   /* Run actions specified on kernel command line. 
    * tom: note that we parsed the command line much earlier.
    * and only now get around to running those commands */
@@ -168,7 +174,11 @@ main (void)
   shutdown ();
   thread_exit ();
 }
-
+
+void yielder() {
+	thread_yield();
+}
+
 /* Clear the "BSS", a segment that should be initialized to
    zeros.  It isn't actually stored on disk or zeroed by the
    kernel loader, so we have to zero it ourselves.
