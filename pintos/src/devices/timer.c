@@ -7,6 +7,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+
+#include <list.h>
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -16,6 +18,11 @@
 #if TIMER_FREQ > 1000
 #error TIMER_FREQ <= 1000 recommended
 #endif
+
+static struct list sleep_list;
+static bool compare_wakeup (const struct list_elem *a,
+                            const struct list_elem *b,
+                            void *aux);
 
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
@@ -35,6 +42,8 @@ static void real_time_delay (int64_t num, int32_t denom);
 void
 timer_init (void) 
 {
+  list_init(&sleep_list);
+
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
 }
@@ -96,36 +105,40 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 	// update the sleep_ticks field to reflect the requested sleep ticks
-	thread_current()->sleep_ticks = ticks;
+  thread_current()->wakeup = ticks + timer_ticks();
+  
+
 	// disable interrupts to change thread status
-	enum intr_level prev_intr_level = intr_disable();
-	thread_block();
+  enum intr_level prev_intr_level = intr_disable();
+  list_insert_ordered (&sleep_list, &(thread_current()->sleep_elem),
+                       compare_wakeup, NULL);
+  thread_block();
 	// restore interrupt level
-	intr_set_level(prev_intr_level);
+  intr_set_level(prev_intr_level);
 }
 
 /*
  * Updates a thread's sleep_ticks field and wakes it up if the thread's
  * sleep_ticks field hits 0
  */
-void
-timer_wake (struct thread *t, void *aux) {
-  // Ensures we don't try to unblock a running thread
-  if (t->status == THREAD_BLOCKED)
-  {
-    // if the thread is still counting down, decrement sleep_ticks
-    if (t->sleep_ticks > 0) 
-    {
-       t->sleep_ticks--;     
-      // time to wake up the thread, so we call thread_unblock(), which
-    }
-		
-    // adds it to the ready list
-    if (t->sleep_ticks == 0) 
-    {
-      thread_unblock(t);
-    }	
+
+bool
+compare_wakeup (const struct list_elem *a,
+                const struct list_elem *b,
+                void *aux) 
+{
+  struct thread *t1 = list_entry (a, struct thread, sleep_elem);
+  struct thread *t2 = list_entry (b, struct thread, sleep_elem);
+
+  int64_t wakeup_a = t1->wakeup;
+  int64_t wakeup_b = t2->wakeup;
+
+  if (wakeup_a < wakeup_b) {
+    return true;
+  } else {
+    return false;
   }
+
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -207,7 +220,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
 	// look through all the threads and wake them if they're ready, 
 	// otherwise update their sleep_tick field
-	thread_foreach(timer_wake, NULL);
+	//thread_foreach(timer_wake, NULL);
+  
+  while (list_empty(&sleep_list) == false) 
+  {
+    struct list_elem *elem = list_front (&sleep_list);
+    struct thread *t = list_entry (elem, struct thread, sleep_elem);
+
+    if (t->wakeup <= ticks) 
+    {
+      list_pop_front(&sleep_list);
+      thread_unblock(t);
+    } 
+    else 
+    {
+      break;
+    }
+  } 
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
