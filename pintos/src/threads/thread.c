@@ -277,6 +277,15 @@ thread_unblock (struct thread *t)
    * based on its priority */
   list_insert_ordered (&ready_list, &t->elem, compare_priority, NULL);
   t->status = THREAD_READY;
+
+  struct thread *current = thread_current ();
+
+  /*If the new thread added is a higher priority than the current thread
+   *the current thread yields */
+  if (current != idle_thread && t->priority > current->priority) {
+    thread_yield ();
+  }
+
   intr_set_level (old_level);
 }
 
@@ -351,9 +360,10 @@ thread_yield (void)
 
   old_level = intr_disable ();
 /* tom: see comment above on the misnamed "list_push_back" */
-  if (cur != idle_thread) 
+  if (cur != idle_thread) {
     /* Insert the current thread into the ready_list (ordered) */
     list_insert_ordered (&ready_list, &cur->elem, compare_priority, NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -381,6 +391,20 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+
+  
+  if (!list_empty (&ready_list))
+  {
+    struct list_elem *next_elem = list_front (&ready_list);
+    struct thread *next_thread = list_entry (next_elem, struct thread, elem);
+  
+    
+    if (next_thread->priority > new_priority) {
+      /*Yield if the priority of the current thread is changed so that
+       *it is lower than the priority of the next thread.*/
+      thread_yield ();
+    }
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -423,7 +447,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -643,9 +667,6 @@ schedule (void)
   ASSERT (cur->status != THREAD_RUNNING);
   ASSERT (is_thread (next));
 
-	//printf("The current thread is: %s\n", cur->name);
-	//printf("the next thread is: %s\n\n", next->name);
-
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
@@ -664,7 +685,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
