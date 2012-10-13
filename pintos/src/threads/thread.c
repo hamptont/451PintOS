@@ -66,6 +66,8 @@ static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
 static void init_thread (struct thread *, const char *name, int priority);
+static bool compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
@@ -270,7 +272,10 @@ thread_unblock (struct thread *t)
  * at the end of of the list.  (There's a list_push_front.)  Calling them
  * "list_prepend" and "list_append" would have been much clearer.
  */
-  list_push_back (&ready_list, &t->elem);
+
+  /* Insert the unblocked thread back into the ready list, ordered
+   * based on its priority */
+  list_insert_ordered (&ready_list, &t->elem, compare_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -347,7 +352,8 @@ thread_yield (void)
   old_level = intr_disable ();
 /* tom: see comment above on the misnamed "list_push_back" */
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    /* Insert the current thread into the ready_list (ordered) */
+    list_insert_ordered (&ready_list, &cur->elem, compare_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -527,6 +533,23 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+}
+
+/* Compares the priority fields of two threads, used when
+ * setting their order in the ready list */
+static bool
+compare_priority(const struct list_elem *a,
+                 const struct list_elem *b,
+                 void *aux)
+{
+  /* Grab the threads associated with the two ready_list elements */
+  struct thread *t1 = list_entry (a, struct thread, elem);
+  struct thread *t2 = list_entry (b, struct thread, elem);
+
+  int a_prior = t1->priority;
+  int b_prior = t2->priority;
+
+  return a_prior > b_prior;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
