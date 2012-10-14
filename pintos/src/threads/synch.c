@@ -34,6 +34,10 @@
 
 static bool compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux); 
 
+static bool
+compare_priority_cond (const struct list_elem *a,
+                       const struct list_elem *b,
+                       void *aux);
 
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -280,6 +284,7 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;                       /* Priority */
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -336,10 +341,13 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
+
+  waiter.priority = thread_current ()->priority;
   
   sema_init (&waiter.semaphore, 0);
-  //list_push_back (&cond->waiters, &waiter.elem);
-  list_insert_ordered (&cond->waiters, &waiter.elem, compare_priority, NULL);
+  //list_push_front (&cond->waiters, &waiter.elem);
+  list_insert_ordered (&cond->waiters, &waiter.elem, 
+                       compare_priority_cond, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -396,3 +404,18 @@ compare_priority(const struct list_elem *a,
   return a_prior > b_prior;
 }
 
+
+static bool
+compare_priority_cond (const struct list_elem *a,
+                       const struct list_elem *b,
+                       void *aux)
+{
+  /* Grab the threads associated with the two ready_list elements */
+  struct semaphore_elem *s1 = list_entry (a, struct semaphore_elem, elem);
+  struct semaphore_elem *s2 = list_entry (b, struct semaphore_elem, elem);
+
+  int a_prior = s1->priority;
+  int b_prior = s2->priority;
+
+  return a_prior > b_prior;
+}
