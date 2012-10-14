@@ -391,6 +391,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  thread_current ()->original_priority = new_priority;
 
   
   if (!list_empty (&ready_list))
@@ -404,6 +405,13 @@ thread_set_priority (int new_priority)
        *it is lower than the priority of the next thread.*/
       thread_yield ();
     }
+  }
+}
+
+void
+thread_set_priority_donated (struct thread *donee) {
+  if (thread_current ()->priority > donee->priority) {
+    donee->priority = thread_current ()->priority;
   }
 }
 
@@ -552,6 +560,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->original_priority = priority;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
