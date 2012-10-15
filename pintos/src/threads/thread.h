@@ -120,6 +120,8 @@ struct thread
     int priority;                       /* Effective Priority. */
     int original_priority;              /* Original Priority */
     struct list_elem allelem;           /* List element for all threads list. */
+   
+    struct thread *blocker_thread;      /* If waiting for a lock, pointer to thread holding lock we need */
 
     int64_t wakeup;                /* When timer should wake up */
     struct list_elem sleep_elem;   /* For the sleep list */ 
@@ -166,6 +168,7 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void thread_set_priority_donated(struct thread *t, int priority);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

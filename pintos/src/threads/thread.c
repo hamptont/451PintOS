@@ -392,8 +392,6 @@ thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
   thread_current ()->original_priority = new_priority;
-
-  
   if (!list_empty (&ready_list))
   {
     struct list_elem *next_elem = list_front (&ready_list);
@@ -408,10 +406,38 @@ thread_set_priority (int new_priority)
   }
 }
 
+/*
+ * Sets priority of blocker thread if current thread's priority is greater
+ * than thread t's current priority. //TODO FIX THIS
+ priority of first thread
+struct t = blocker thread ( we need to increase his priority!) 
+
+*/
 void
-thread_set_priority_donated (struct thread *donee) {
-  if (thread_current ()->priority > donee->priority) {
-    donee->priority = thread_current ()->priority;
+thread_set_priority_donated (struct thread *t, int priority) {
+  /* Finds the max priority between current thread and blocker thread */
+  struct thread *blocker_t = t;
+  if(blocker_t != NULL)
+  {
+    int max_priority = blocker_t -> priority;
+    if (priority > max_priority) 
+    {
+      blocker_t -> priority = priority;
+      max_priority = priority;
+    }
+ 
+    /* Checks to see if current_thread is waiting on a lock.
+     * If it is, we need to make sure that if that thread is waiting on a
+     * lock too, they are all set to the priority of the highest thread. */ 
+    struct thread *blocker_t_lock = blocker_t->blocker_thread;
+    if(blocker_t_lock != NULL)
+    {
+      int blocker_t_priority = blocker_t_lock->priority;
+      if(blocker_t_priority < max_priority)
+      {
+       thread_set_priority_donated(blocker_t_lock, max_priority);
+      }
+    }
   }
 }
 
@@ -535,6 +561,8 @@ running_thread (void)
 static bool
 is_thread (struct thread *t)
 {
+  ASSERT (t != NULL); //TODO remove
+  ASSERT (t->magic == THREAD_MAGIC); //TODO remove 
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
