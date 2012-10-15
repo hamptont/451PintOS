@@ -232,19 +232,10 @@ lock_acquire (struct lock *lock)
   struct thread *blocker_thread = lock->holder;
   if (blocker_thread != NULL) {
     t->blocker_thread = blocker_thread;
-//    msg("CHILD OF %s", t->name);
     thread_set_priority_donated (blocker_thread, t->priority);
   }
-  else
-  {
-//    msg("blocker_thread is null");
-  }
-//  t->blocker_thread=NULL; 
   sema_down (&lock->semaphore);
   lock->holder = thread_current();
-  //we have the lock now, nothing is blocking us
-//  t->blocker_thread = NULL;
-//  t->priority = t->original_priority;
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -278,8 +269,6 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-//  thread_current()->priority = thread_current()->original_priority;
-//  thread_current()->blocker_thread = NULL;
   thread_set_priority (thread_current ()->original_priority);
 
   lock->holder = NULL;
