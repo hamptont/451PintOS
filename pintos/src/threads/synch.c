@@ -231,11 +231,13 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *t = thread_current();
   struct thread *blocker_thread = lock->holder;
+
   if (blocker_thread != NULL) {
     t->blocker_thread = blocker_thread;
     thread_set_priority_donated (blocker_thread, t->priority);
   }
   sema_down (&lock->semaphore);
+  list_push_back(&t->lock_list, &lock->lock_elem);
   lock->holder = thread_current();
 }
 
@@ -269,11 +271,32 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  
-  thread_set_priority (thread_current ()->original_priority);
+ 
+  list_remove(&lock->lock_elem); 
+  int next_priority = thread_current()->original_priority;
+
+  struct list_elem *e;
+
+  for(e = list_begin(&thread_current()->lock_list); e != list_end(&thread_current()->lock_list); e = list_next(e))
+  {
+    struct lock *next_lock = list_entry(e, struct lock, lock_elem);
+    struct thread *holder = lock->holder;
+    int priority = holder->priority;
+    if(priority > next_priority)
+    {
+      next_priority = priority;
+    }
+  }
+
+  thread_current()->priority = next_priority;
 
   lock->holder = NULL;
+
   sema_up (&lock->semaphore);
+
+  
+  
+  
 }
 
 /* Returns true if the current thread holds LOCK, false
