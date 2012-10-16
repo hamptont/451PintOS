@@ -406,6 +406,25 @@ thread_set_priority (int new_priority)
   }
 }
 
+
+void
+thread_set_effective_priority (int new_priority) 
+{
+  thread_current ()->priority = new_priority;
+  if (!list_empty (&ready_list))
+  {
+    struct list_elem *next_elem = list_front (&ready_list);
+    struct thread *next_thread = list_entry (next_elem, struct thread, elem);
+  
+    
+    if (next_thread->priority > new_priority) {
+      /*Yield if the priority of the current thread is changed so that
+       *it is lower than the priority of the next thread.*/
+      thread_yield ();
+    }
+  }
+}
+
 /*
  * Sets struct t's priority to priority if is currently lower.
  * Checks to see if struct t is waiting on any locks, if so, it sets

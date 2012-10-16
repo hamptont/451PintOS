@@ -280,15 +280,21 @@ lock_release (struct lock *lock)
   for(e = list_begin(&thread_current()->lock_list); e != list_end(&thread_current()->lock_list); e = list_next(e))
   {
     struct lock *next_lock = list_entry(e, struct lock, lock_elem);
-    struct thread *holder = lock->holder;
-    int priority = holder->priority;
-    if(priority > next_priority)
+    struct list_elem *le = list_max (&next_lock->semaphore.waiters,
+                                     compare_priority, NULL);
+    struct thread *holder = list_entry (le, struct thread, elem);
+    if (holder != NULL)
     {
-      next_priority = priority;
+      int priority = holder->priority;
+      if(priority > next_priority)
+      {
+        next_priority = priority;
+      }
     }
   }
 
   thread_current()->priority = next_priority;
+  //thread_set_effective_priority (next_priority);
 
   lock->holder = NULL;
 
