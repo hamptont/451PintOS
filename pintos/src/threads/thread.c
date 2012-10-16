@@ -390,27 +390,33 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  thread_current ()->original_priority = new_priority;
-  if (!list_empty (&ready_list))
+  struct list_elem *e;
+
+  bool allow_priority_update = true;
+
+  for(e = list_begin(&thread_current()->lock_list); e != list_end(&thread_current()->lock_list); e = list_next(e))
   {
-    struct list_elem *next_elem = list_front (&ready_list);
-    struct thread *next_thread = list_entry (next_elem, struct thread, elem);
-  
-    
-    if (next_thread->priority > new_priority) {
-      /*Yield if the priority of the current thread is changed so that
-       *it is lower than the priority of the next thread.*/
-      thread_yield ();
+    struct lock *next_lock = list_entry (e, struct lock, lock_elem);
+    struct thread *holder = next_lock->holder;
+    if(holder != NULL)
+    {
+      int priority = holder->priority;
+      if(priority > new_priority)
+      {
+        allow_priority_update = false;
+      }
     }
+  } 
+
+  if(allow_priority_update)
+  {
+    thread_current ()->priority = new_priority;
+    thread_current ()->original_priority = new_priority;
   }
-}
-
-
-void
-thread_set_effective_priority (int new_priority) 
-{
-  thread_current ()->priority = new_priority;
+  else
+  {
+    thread_current()->waiting_priority = new_priority;
+  }
   if (!list_empty (&ready_list))
   {
     struct list_elem *next_elem = list_front (&ready_list);
@@ -605,7 +611,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->original_priority = priority;
   t->magic = THREAD_MAGIC;
-
+  t->waiting_priority = 0;
   list_init(&(t->lock_list));
 
   old_level = intr_disable ();

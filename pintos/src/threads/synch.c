@@ -275,6 +275,11 @@ lock_release (struct lock *lock)
   list_remove(&lock->lock_elem); 
   int next_priority = thread_current()->original_priority;
 
+  if(thread_current() -> waiting_priority != 0)
+  {
+    next_priority = thread_current()->waiting_priority;
+  }
+
   struct list_elem *e;
 
   for(e = list_begin(&thread_current()->lock_list); e != list_end(&thread_current()->lock_list); e = list_next(e))

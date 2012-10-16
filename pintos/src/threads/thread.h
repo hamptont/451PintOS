@@ -119,6 +119,8 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Effective Priority. */
     int original_priority;              /* Original Priority */
+    int waiting_priority;               /* Priority thread wants to change to as soon as donating lock is released */
+
     struct list_elem allelem;           /* List element for all threads list. */
    
     struct thread *blocker_thread;      /* If waiting for a lock, pointer to thread holding lock we need */
