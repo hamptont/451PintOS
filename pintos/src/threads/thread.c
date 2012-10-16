@@ -395,9 +395,17 @@ void
 thread_set_priority (int new_priority) 
 {
   struct list_elem *e;
-  struct thread *cur = thread_current ();
+  struct thread *cur = thread_current();
   bool allow_priority_update = true;
 
+  /* Looks through the list of locks this thread currently holds and checks
+   * looks at the priority of the thread that is waiting for the lock(one any
+   * exist). If any of their priorities are greater than new_priority, we know
+   * the waiting thread donated it's priority to us and we must maintain at 
+   * least that level until we release the lock they are waiting for. Then 
+   * we can safely update our priority level (assuming no other threads have
+   * donated us priority too).  
+    */ 
   for(e = list_begin(&cur->lock_list); e != list_end(&cur->lock_list); 
       e = list_next(e))
     {
@@ -412,41 +420,53 @@ thread_set_priority (int new_priority)
             }
         }
     } 
+ 
+  /* Turn off intrups while we are modifying the threads priorities, 
+   * We don't want to get switched out during this */ 
+  enum intr_level old_level = intr_disable();
 
   if(allow_priority_update)
-    {
-      cur->priority = new_priority;
-      cur->original_priority = new_priority;
-    }
+  {
+    //update priorities
+    cur->priority = new_priority;
+    cur->original_priority = new_priority;
+  }
   else
-    {
-      cur->waiting_priority = new_priority;
-    }
-    
-  if (!list_empty (&ready_list))
-    {
-      struct list_elem *next_elem = list_front (&ready_list);
-      struct thread *next_thread = list_entry (next_elem, struct thread, elem);
+  {
+    /* We can not update to this priority yet because another thread has 
+     * donated us a higher priority and we must maintain it until we release
+     * the lock they are waiting for */
+    cur->waiting_priority = new_priority;
+  }
+
+  intr_set_level(old_level);
   
+  //Add thread to ready list
+  if(!list_empty (&ready_list))
+  {
+    struct list_elem *next_elem = list_front (&ready_list);
+    struct thread *next_thread = list_entry (next_elem, struct thread, elem);  
     
-      if (next_thread->priority > new_priority) 
-        {
-        /*Yield if the priority of the current thread is changed so that
-         *it is lower than the priority of the next thread.*/
-        thread_yield ();
-        }
+    if (next_thread->priority > new_priority) 
+     {
+       /* Yield if the priority of the current thread is changed so that
+        * it is lower than the priority of the next thread.*/
+       thread_yield ();
     }
+  }
 }
 
 /*
- * Sets struct t's priority to priority if is currently lower.
- * Checks to see if struct t is waiting on any locks, if so, it sets
- * the priority of that thread to at least priority
+ * Sets struct blocker_t's priority to priority if is currently lower.
+ * than priority, otherwise leaves value unchanged. 
+ * Checks to see if struct t is waiting on any locks, if so, it 
+ * recursivly donates priority to the thread who currently owns the lock.
  */
 void
-thread_set_priority_donated (struct thread *t, int priority) {
-  /* Finds the max priority between current thread and blocker thread */
-  struct thread *blocker_t = t;
+thread_set_priority_donated (struct thread *blocker_t, int priority) {
+  /* Finds the max priority between current thread and blocker thread.
+   * If the current threads priority is lower, sets the threads priority
+   * to priority */
   if(blocker_t != NULL)
     {
       int max_priority = blocker_t -> priority;
