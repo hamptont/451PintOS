@@ -235,14 +235,19 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread *cur = thread_current();
   struct thread *blocker_thread = lock->holder;
-
+  
+  /* If there is no thread currently blocking this thread, set the 
+   * blocker_thread to be the holder of the lock the current thread
+   * is waiting on */
   if (blocker_thread != NULL) 
     {
       cur->blocker_thread = blocker_thread;
       thread_set_priority_donated (blocker_thread, cur->priority);
     }
-
+  
   sema_down (&lock->semaphore);
+  
+  /* Push the newly-acquired lock into the current thread's lock list */
   list_push_back(&cur->lock_list, &lock->lock_elem);
   lock->holder = cur;
 }
@@ -281,8 +286,11 @@ lock_release (struct lock *lock)
   struct thread *cur = thread_current();
   int next_priority = cur->original_priority;
 
+  // lock is no longer being held by the current thread
   list_remove(&lock->lock_elem); 
 
+
+  /* Once lock is released, restore the pre-donation priority */
   if(cur->waiting_priority != 0)
   {
     next_priority = cur->waiting_priority;
@@ -290,6 +298,10 @@ lock_release (struct lock *lock)
 
   struct list_elem *e;
 
+  /* Iterates through the locks held by the current thread, and then
+   * for each lock iterates through the threads waiting on that lock. 
+   * next_priority is set the to the max among all those threads and
+   * the waiting_priority */
   for(e = list_begin(&cur->lock_list); e != list_end(&cur->lock_list); 
       e = list_next(e))
     {
@@ -304,6 +316,7 @@ lock_release (struct lock *lock)
         }
      }  
 
+  /* Assign the new priority to the current thread, and */
   cur->priority = next_priority;
   lock->holder = NULL;
   sema_up (&lock->semaphore);
@@ -429,6 +442,9 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
+/* Compares the priorities of the threads associated with two
+ * list_elem structs. Returns whether the first's priority is
+ * greater than that of the second */
 static bool
 compare_priority(const struct list_elem *a,
                  const struct list_elem *b,
@@ -444,7 +460,9 @@ compare_priority(const struct list_elem *a,
   return a_priority > b_priority;
 }
 
-
+/* Compares the priorities of the semaphore_elems associated with
+ * two list_elem structs. Returns whether the first's priority is
+ * greater than that of the second */
 static bool
 compare_priority_cond (const struct list_elem *a,
                        const struct list_elem *b,
