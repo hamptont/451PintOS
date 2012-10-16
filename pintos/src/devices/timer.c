@@ -99,21 +99,23 @@ void
 timer_sleep (int64_t ticks) 
 {
   if (ticks < 0) 
-  {
-    return;
-  }
+    {
+      return;
+    }
 
   ASSERT (intr_get_level () == INTR_ON);
-	// update the sleep_ticks field to reflect the requested sleep ticks
+  
+  // update the sleep_ticks field to reflect the requested sleep ticks
   thread_current()->wakeup = ticks + timer_ticks();
   
 
-	// disable interrupts to change thread status
+  // disable interrupts to change thread status
   enum intr_level prev_intr_level = intr_disable();
   list_insert_ordered (&sleep_list, &(thread_current()->sleep_elem),
                        compare_wakeup, NULL);
   thread_block();
-	// restore interrupt level
+  
+  // restore interrupt level
   intr_set_level(prev_intr_level);
 }
 
@@ -133,11 +135,7 @@ compare_wakeup (const struct list_elem *a,
   int64_t wakeup_a = t1->wakeup;
   int64_t wakeup_b = t2->wakeup;
 
-  if (wakeup_a < wakeup_b) {
-    return true;
-  } else {
-    return false;
-  }
+  return wakeup_a < wakeup_b;
 
 }
 
@@ -218,25 +216,25 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-	// look through all the threads and wake them if they're ready, 
-	// otherwise update their sleep_tick field
-	//thread_foreach(timer_wake, NULL);
+  // look through all the threads and wake them if they're ready, 
+  // otherwise update their sleep_tick field
+  //thread_foreach(timer_wake, NULL);
   
   while (list_empty(&sleep_list) == false) 
-  {
-    struct list_elem *elem = list_front (&sleep_list);
-    struct thread *t = list_entry (elem, struct thread, sleep_elem);
+    {
+      struct list_elem *elem = list_front (&sleep_list);
+      struct thread *t = list_entry (elem, struct thread, sleep_elem);
 
-    if (t->wakeup <= ticks) 
-    {
-      list_pop_front(&sleep_list);
-      thread_unblock(t);
+      if (t->wakeup <= ticks) 
+        {
+          list_pop_front(&sleep_list);
+          thread_unblock(t);
+        } 
+      else 
+        {
+          break;
+        }
     } 
-    else 
-    {
-      break;
-    }
-  } 
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
