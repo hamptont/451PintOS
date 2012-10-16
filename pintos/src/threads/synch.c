@@ -74,13 +74,10 @@ sema_down (struct semaphore *sema)
 
   old_level = intr_disable ();
   while (sema->value == 0) 
-    {
-      //list_push_back (&sema->waiters, &thread_current ()->elem);
-      list_insert_ordered (&sema->waiters, &thread_current ()->elem, 
-                           compare_priority, NULL);
-      
-      thread_block ();
-    }
+  { 
+    list_push_back (&sema->waiters, &thread_current ()->elem);   
+    thread_block ();
+  }
   sema->value--;
   intr_set_level (old_level);
 }
@@ -175,7 +172,7 @@ sema_test_helper (void *sema_)
       sema_up (&sema[1]);
     }
 }
-
+
 /* tom: I find it easier to think of a lock in its own terms,
  * rather than in terms of a semaphore.  A lock provides mutual exclusion.
  * There are two operations: acquire and release.  Acquire waits
@@ -299,15 +296,10 @@ lock_release (struct lock *lock)
   }
 
   thread_current()->priority = next_priority;
-  //thread_set_effective_priority (next_priority);
 
   lock->holder = NULL;
 
   sema_up (&lock->semaphore);
-
-  
-  
-  
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -320,7 +312,7 @@ lock_held_by_current_thread (const struct lock *lock)
 
   return lock->holder == thread_current ();
 }
-
+
 /* One semaphore in a list. */
 struct semaphore_elem 
   {
@@ -387,7 +379,6 @@ cond_wait (struct condition *cond, struct lock *lock)
   waiter.priority = thread_current ()->priority;
   
   sema_init (&waiter.semaphore, 0);
-  //list_push_front (&cond->waiters, &waiter.elem);
   list_insert_ordered (&cond->waiters, &waiter.elem, 
                        compare_priority_cond, NULL);
   lock_release (lock);
