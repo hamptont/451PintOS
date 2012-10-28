@@ -31,17 +31,32 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
+  char *prog_name;
+  char **saveptr;
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
-    return TID_ERROR;
+  prog_name = palloc_get_page (0);
+  if (fn_copy == NULL || prog_name == NULL) 
+    {
+      palloc_free_page (fn_copy);
+      palloc_free_page (prog_name);
+      return TID_ERROR;
+    }
+
   strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (prog_name, file_name, PGSIZE);
+
+  prog_name = strtok_r (prog_name, " ", saveptr);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    {
+      palloc_free_page (fn_copy); 
+      palloc_free_page (prog_name);
+    }
   return tid;
 }
 
@@ -86,9 +101,18 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+  struct thread *thread = thread_from_tid(child_tid);
+
+  if (thread == NULL)
+    {
+      return -1;
+    }
+
+  printf ("%s: exit(%d)\n", thread->name, thread->return_status);
+  
+  return thread->status;
 }
 
 /* Free the current process's resources. */
