@@ -370,6 +370,17 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+struct thread *thread_from_tid(tid_t thread_tid) 
+{
+  struct list_elem *e;
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
+  {
+    struct thread *current = list_entry (e, struct thread, elem);
+    if (current->tid == thread_tid)
+      return current;
+  }
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
