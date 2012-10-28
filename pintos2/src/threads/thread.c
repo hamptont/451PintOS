@@ -375,10 +375,11 @@ struct thread *thread_from_tid(tid_t thread_tid)
   struct list_elem *e;
   for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
   {
-    struct thread *current = list_entry (e, struct thread, elem);
+    struct thread *current = list_entry (e, struct thread, allelem);
     if (current->tid == thread_tid)
       return current;
   }
+  return NULL;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
