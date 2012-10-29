@@ -6,6 +6,7 @@
 
 #include "userprog/process.h"
 #include "devices/shutdown.h"
+#include <console.h>
 
 #define NUM_SYSCALLS 32
 
@@ -63,8 +64,7 @@ syscall_handler (struct intr_frame *f UNUSED)
                                      *((int *)(f->esp) + 3));
 
   f->eax = ret;  
-
-  thread_exit ();
+  thread_exit();
 }
 
 
@@ -78,6 +78,9 @@ halt (void)
 static void 
 exit (int status)
 {
+  struct thread *t = thread_current();
+  t->return_status = status;
+
 }
 
 static int 
@@ -123,6 +126,7 @@ read (int fd, void *buffer, unsigned size)
 static int 
 write (int fd, const void *buffer, unsigned size)
 {
+  putbuf (buffer, size);
 }
 
 static unsigned 
