@@ -82,6 +82,7 @@ start_process (void *file_name_)
     thread_exit ();
 
   /* Push arguments onto stack */
+/*
   char *esp = if_.esp;
  
   char *next_arg;
@@ -136,6 +137,7 @@ start_process (void *file_name_)
   *(esp + 4) = arg_count;
   *(esp) = (void *) 0;
 
+*/
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
