@@ -32,7 +32,7 @@ process_execute (const char *file_name)
   tid_t tid;
 
   char *prog_name;
-  char **saveptr;
+  char **saveptr = NULL;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -80,6 +80,62 @@ start_process (void *file_name_)
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+  /* Push arguments onto stack */
+  char *esp = if_.esp;
+ 
+  char *next_arg;
+  char *save_ptr;
+  int arg_count = 0;
+  next_arg = strtok_r(file_name, " ", &save_ptr);
+
+  char *null_term_args = ""; //Replace spaces with \n : "arg1\narg2\narg3\n"
+  int null_terms_args_size = 0; //Length of null_term_args : 15
+  //Find each arg and copy it into null_term_args separated by \n instead of white space
+  //Keep track of size of null_term_args in null_terms_args_size
+  while(next_arg != NULL)
+  {
+    null_terms_args_size  += strlcpy(null_term_args + null_terms_args_size, next_arg, 1024); 
+    null_terms_args_size++; //account for \n
+    arg_count++;    
+    next_arg  = strtok_r(NULL, " ", &save_ptr);
+  } 
+
+  int word_align = 4 - (null_terms_args_size % 4);
+  //Copy null_term_args into stack 
+  int esp_offset = 12 + arg_count * 4 + null_terms_args_size + word_align;
+  strlcpy(esp + esp_offset, null_term_args, null_terms_args_size);
+
+  char *arg_addr[1024];
+  char *curr = esp + esp_offset; //Start where null_term_args is copied on the stack
+  //Traverse stack where args are stored to pull out memory addresses 
+  int index = 0;
+  arg_addr[index] = curr;
+  index++;
+  while(index != arg_count)
+  {
+    //traverse until we find the next \n
+    while(*curr != '\n')
+    {
+      curr++;
+    }  
+    curr++; //point to the next word instead of the \n
+    arg_addr[index] = curr;
+    index++;
+  }
+
+  *(esp + 12 + (arg_count * 4)) = (char *) 0;
+
+  int i;
+  for(i = 0; i < arg_count; i++)
+  {
+    *(esp + 12 + (i * 4)) = arg_addr[i];
+  }
+
+  *(esp + 8) = (char **)(esp + 12);
+  *(esp + 4) = arg_count;
+  *(esp) = (void *) 0;
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
