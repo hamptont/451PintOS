@@ -68,39 +68,77 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  char *all_args = palloc_get_page(0);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+
+  strlcpy(all_args, file_name, PGSIZE);
+
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
+  file_name = NULL;
   if (!success) 
-    thread_exit ();
+    {
+      palloc_free_page (all_args);
+      thread_exit ();
+    }
 
   /* Push arguments onto stack */
   char *esp = if_.esp;
- 
+
   char *next_arg;
   char *save_ptr;
-  int arg_count = 0;
-  next_arg = strtok_r(file_name, " ", &save_ptr);
+  int argc = 0;
+  char *argv[128];
 
-  char *null_term_args = ""; //Replace spaces with \n : "arg1\narg2\narg3\n"
-  int null_terms_args_size = 0; //Length of null_term_args : 15
-  //Find each arg and copy it into null_term_args separated by \n instead of white space
-  //Keep track of size of null_term_args in null_terms_args_size
+  int arg_size = strlen(all_args) + 1;
+  next_arg = strtok_r(all_args, " ", &save_ptr);
+
   while(next_arg != NULL)
   {
-    null_terms_args_size  += strlcpy(null_term_args + null_terms_args_size, next_arg, 1024); 
-    null_terms_args_size++; //account for \n
-    arg_count++;    
+    argv[argc] = next_arg;
+    argc++;    
     next_arg  = strtok_r(NULL, " ", &save_ptr);
   } 
 
+  esp -= arg_size;
+  memcpy(esp, all_args, arg_size);
+
+  //word align
+  esp -= ((unsigned int)esp % 4);
+
+  //last arg
+  esp -= 4;
+  *(char *)(esp) = 0;
+
+  int i;
+  for (i = argc - 1; i >= 0; i--)
+    {
+      esp -= 4;
+      *(char *)esp = argv[i];
+    }
+
+  //argv
+  esp -= 4;
+  *(char **)(esp) = (esp + 4);
+
+  //argc
+  esp -= 4;
+  *(int *)(esp) = argc;
+
+  //return
+  esp -= 4;
+  *(int *)(esp) = 0;
+
+  palloc_free_page(all_args);
+
+/*
   int word_align = 4 - (null_terms_args_size % 4);
   //Copy null_term_args into stack 
   int esp_offset = 12 + arg_count * 4 + null_terms_args_size + word_align;
@@ -135,8 +173,7 @@ start_process (void *file_name_)
   *(esp + 8) = (char **)(esp + 12);
   *(esp + 4) = arg_count;
   *(esp) = (void *) 0;
-
-
+*/
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -159,20 +196,18 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
+
+  while(1){ }
+
   struct thread *thread = thread_from_tid(child_tid);
 
-  /* 
   if (thread == NULL)
     {
       return -1;
     }
 
-  printf ("%s: exit(%d)\n", thread->name, thread->return_status);*/
+  printf ("%s: exit(%d)\n", thread->name, thread->return_status);
 
-  while(1)
-  {
-  }
-  
   return thread->return_status;
 }
 
