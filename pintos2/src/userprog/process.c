@@ -32,7 +32,7 @@ process_execute (const char *file_name)
   tid_t tid;
 
   char *prog_name;
-  char **saveptr = NULL;
+  char *saveptr;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -48,7 +48,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
   strlcpy (prog_name, file_name, PGSIZE);
 
-  prog_name = strtok_r (prog_name, " ", saveptr);
+  prog_name = strtok_r (prog_name, " ", &saveptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
@@ -168,7 +168,7 @@ process_wait (tid_t child_tid)
 
   printf ("%s: exit(%d)\n", thread->name, thread->return_status);
   
-  return thread->status;
+  return thread->return_status;
 }
 
 /* Free the current process's resources. */
@@ -517,7 +517,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }
