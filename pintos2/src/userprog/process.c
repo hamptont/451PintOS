@@ -161,12 +161,17 @@ process_wait (tid_t child_tid)
 {
   struct thread *thread = thread_from_tid(child_tid);
 
+  /* 
   if (thread == NULL)
     {
       return -1;
     }
 
-  printf ("%s: exit(%d)\n", thread->name, thread->return_status);
+  printf ("%s: exit(%d)\n", thread->name, thread->return_status);*/
+
+  while(1)
+  {
+  }
   
   return thread->return_status;
 }
