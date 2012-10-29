@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -68,112 +69,75 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
-  char *all_args = palloc_get_page(0);
 
+  char *next_arg;
+  char *save_ptr;
+  int argc;
+  void *argv[128];
+  int arg_size;
+  int i;
+ 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  strlcpy(all_args, file_name, PGSIZE);
-
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
-  file_name = NULL;
   if (!success) 
     {
-      palloc_free_page (all_args);
+      palloc_free_page (file_name);
       thread_exit ();
     }
 
-  /* Push arguments onto stack */
-  char *esp = if_.esp;
+  argv[0] = 0;
+  argc = 0;
+  arg_size = strlen(file_name) + 1;
+  next_arg = strtok_r (file_name, " ", &save_ptr);
 
-  char *next_arg;
-  char *save_ptr;
-  int argc = 0;
-  char *argv[128];
-
-  int arg_size = strlen(all_args) + 1;
-  next_arg = strtok_r(all_args, " ", &save_ptr);
-
-  while(next_arg != NULL)
-  {
-    argv[argc] = next_arg;
-    argc++;    
-    next_arg  = strtok_r(NULL, " ", &save_ptr);
-  } 
-
-  esp -= arg_size;
-  memcpy(esp, all_args, arg_size);
-
-  //word align
-  esp -= ((unsigned int)esp % 4);
-
-  //last arg
-  esp -= 4;
-  *(char *)(esp) = 0;
-
-  int i;
-  for (i = argc - 1; i >= 0; i--)
+  while (next_arg != NULL)
     {
-      esp -= 4;
-      *(char *)esp = argv[i];
+      argc++;
+      argv[argc] = (void *)((int)save_ptr - (int)file_name);
+      next_arg = strtok_r(NULL, " ", &save_ptr);
     }
 
-  //argv
-  esp -= 4;
-  *(char **)(esp) = (esp + 4);
+  //Copy file_name into the stack
+  if_.esp -= arg_size;
+  memcpy (if_.esp, file_name, arg_size + 1);
+  void *str_begin = if_.esp;
+
+  //Word Align
+  if_.esp -= (unsigned)(arg_size % 4);
+
+  //Last Element of argv
+  if_.esp -= 4;
+  *(int *)(if_.esp) = 0;
+
+  //Elements of argv
+  for (i = argc - 1; i >= 0; --i)
+    {
+      if_.esp -= 4;
+      *(void **)(if_.esp) = (void *)((int)str_begin + (int)argv[i]);
+    }
+
+  //Pointer to argv
+  if_.esp -= 4;
+  *(char **)(if_.esp) = (if_.esp + 4); 
 
   //argc
-  esp -= 4;
-  *(int *)(esp) = argc;
+  if_.esp -= 4;
+  *(int *)(if_.esp) = argc;
 
-  //return
-  esp -= 4;
-  *(int *)(esp) = 0;
+  //Return value
+  if_.esp -= 4;
+  *(int *)(if_.esp) = 0; 
 
-  palloc_free_page(all_args);
 
-/*
-  int word_align = 4 - (null_terms_args_size % 4);
-  //Copy null_term_args into stack 
-  int esp_offset = 12 + arg_count * 4 + null_terms_args_size + word_align;
-  strlcpy(esp + esp_offset, null_term_args, null_terms_args_size);
-
-  char *arg_addr[1024];
-  char *curr = esp + esp_offset; //Start where null_term_args is copied on the stack
-  //Traverse stack where args are stored to pull out memory addresses 
-  int index = 0;
-  arg_addr[index] = curr;
-  index++;
-  while(index != arg_count)
-  {
-    //traverse until we find the next \n
-    while(*curr != '\n')
-    {
-      curr++;
-    }  
-    curr++; //point to the next word instead of the \n
-    arg_addr[index] = curr;
-    index++;
-  }
-
-  *(esp + 12 + (arg_count * 4)) = (char *) 0;
-
-  int i;
-  for(i = 0; i < arg_count; i++)
-  {
-    *(esp + 12 + (i * 4)) = arg_addr[i];
-  }
-
-  *(esp + 8) = (char **)(esp + 12);
-  *(esp + 4) = arg_count;
-  *(esp) = (void *) 0;
-*/
+  palloc_free_page (file_name);
+  //thread_exit ();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
