@@ -63,8 +63,9 @@ syscall_handler (struct intr_frame *f UNUSED)
                                      *((int *)(f->esp) + 2),
                                      *((int *)(f->esp) + 3));
 
-  f->eax = ret;  
-  thread_exit();
+  f->eax = ret; 
+
+ // thread_exit();
 }
 
 
@@ -127,6 +128,8 @@ static int
 write (int fd, const void *buffer, unsigned size)
 {
   putbuf (buffer, size);
+
+  return size;
 }
 
 static unsigned 
