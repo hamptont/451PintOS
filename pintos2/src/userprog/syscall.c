@@ -81,7 +81,7 @@ exit (int status)
   struct thread *t = thread_current();
   t->return_status = status;
 
-  printf ("%s: exit(%d)\n", t->name, t->status);
+  printf ("%s: exit(%d)\n", t->name, t->return_status);
 
   thread_exit();
 }
@@ -89,21 +89,25 @@ exit (int status)
 static int 
 fork (void)
 {
+  return 0;
 }
 
 static int 
 exec (const char *cmd_line)
 {
+  return 0;
 }
 
 static int 
 dup2 (int old_fd, int new_fd)
 {
+  return 0;
 }
 
 static int 
 pipe (int pipe[2])
 {
+  return 0;
 }
 
 static int 
@@ -115,16 +119,19 @@ wait (int pid)
 static int 
 open (const char *file)
 {
+  return 0;
 }
 
 static int 
 filesize (int fd)
 {
+  return 0;
 }
 
 static int 
 read (int fd, void *buffer, unsigned size)
 {
+  return 0;
 }
 
 static int 
@@ -138,6 +145,7 @@ write (int fd, const void *buffer, unsigned size)
 static unsigned 
 tell (int fd)
 {
+  return 0;
 }
 
 static void 
