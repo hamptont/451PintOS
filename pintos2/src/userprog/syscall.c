@@ -91,7 +91,6 @@ syscall_handler (struct intr_frame *f)
                                      *((sp) + 2),
                                      *((sp) + 3));
 
-  
   f->eax = ret; 
 }
 
@@ -144,10 +143,46 @@ wait (int pid)
   return process_wait(pid); 
 }
 
+
+/*
+ * TODO: need to make sure *file is a valid address / pointer to a valid file
+ * fails on open("no-such-file") --> should return -1
+ * fails on open((char *) 0x20101234)) --> should call exit(-1)
+ */
 static int 
 open (const char *file)
 {
-  return 0;
+  if(file == NULL || *file == NULL)
+  {
+    //file does not exist
+    return -1;
+  }
+
+  //read size bytes from fd(file) into buffer
+  char **fds = thread_current()->fds;
+  int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
+  bool foundOpenFD = false;
+  //traverse FD list to find lowest avaliable FD
+  while(!foundOpenFD)
+  {
+    if(index == 128) 
+    {
+      //we ran out of FDs
+      return -1;
+    }
+    if(fds[index] == NULL)
+    {
+      //we found an avaliable FD
+      foundOpenFD = true;
+      fds[index] = file;
+    } 
+    else
+    {
+      //FD is in use, check the next one
+      index++;
+    }
+  }
+  return index;
 }
 
 static int 
@@ -159,6 +194,7 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned size)
 {
+  //read size bytes from fd(file) into buffer
   return 0;
 }
 

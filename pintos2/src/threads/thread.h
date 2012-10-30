@@ -134,6 +134,9 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    /* List of open File Descriptors */
+    int fds[128];
   };
 
 /* If false (default), use round-robin scheduler.
