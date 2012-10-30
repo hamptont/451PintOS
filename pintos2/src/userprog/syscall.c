@@ -4,7 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/synch.h"
-
+#include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "devices/shutdown.h"
 #include <console.h>
@@ -56,15 +56,43 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
-  int syscall_num = *((int *)(f->esp));
-  int ret = syscall_vec[syscall_num](*((int *)(f->esp) + 1),
-                                     *((int *)(f->esp) + 2),
-                                     *((int *)(f->esp) + 3));
 
+  int *sp = f->esp;
+
+  //Test valid stack pointer
+  
+  if (!is_user_vaddr (sp))
+    {
+      exit(-1);
+      return;
+    }
+  
+  int syscall_num = *sp;
+  //Test valid syscall num
+  if (syscall_num < 0 || syscall_num >= NUM_SYSCALLS)
+    {
+      exit(-1);
+      return;
+    }
+
+  //Test valid arguments
+  if (!is_user_vaddr (sp + 1) ||
+      !is_user_vaddr (sp + 2) ||
+      !is_user_vaddr (sp + 3))
+    {
+      exit(-1);
+      return;
+    }
+      
+
+  int ret = syscall_vec[syscall_num](*((sp) + 1),
+                                     *((sp) + 2),
+                                     *((sp) + 3));
+
+  
   f->eax = ret; 
-
 }
 
 
