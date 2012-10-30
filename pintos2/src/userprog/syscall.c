@@ -3,6 +3,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/synch.h"
 
 #include "userprog/process.h"
 #include "devices/shutdown.h"
@@ -57,7 +58,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  //printf ("system call!\n");
   int syscall_num = *((int *)(f->esp));
   int ret = syscall_vec[syscall_num](*((int *)(f->esp) + 1),
                                      *((int *)(f->esp) + 2),
@@ -65,7 +65,6 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   f->eax = ret; 
 
- // thread_exit();
 }
 
 
@@ -82,6 +81,9 @@ exit (int status)
   struct thread *t = thread_current();
   t->return_status = status;
 
+  printf ("%s: exit(%d)\n", t->name, t->status);
+
+  thread_exit();
 }
 
 static int 
@@ -107,6 +109,7 @@ pipe (int pipe[2])
 static int 
 wait (int pid)
 {
+  return process_wait(pid); 
 }
 
 static int 

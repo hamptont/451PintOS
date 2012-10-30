@@ -39,7 +39,7 @@ process_execute (const char *file_name)
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   prog_name = palloc_get_page (0);
-  if (fn_copy == NULL || prog_name == NULL) 
+  if (fn_copy == NULL/* || prog_name == NULL*/) 
     {
       palloc_free_page (fn_copy);
       palloc_free_page (prog_name);
@@ -52,12 +52,14 @@ process_execute (const char *file_name)
   prog_name = strtok_r (prog_name, " ", &saveptr);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     {
       palloc_free_page (fn_copy); 
       palloc_free_page (prog_name);
     }
+
+
   return tid;
 }
 
@@ -135,9 +137,7 @@ start_process (void *file_name_)
   if_.esp -= 4;
   *(int *)(if_.esp) = 0; 
 
-
   palloc_free_page (file_name);
-  //thread_exit ();
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -161,9 +161,6 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-
-  while(1){ }
-
   struct thread *thread = thread_from_tid(child_tid);
 
   if (thread == NULL)
@@ -171,7 +168,10 @@ process_wait (tid_t child_tid)
       return -1;
     }
 
-  printf ("%s: exit(%d)\n", thread->name, thread->return_status);
+  if (thread->return_status != -1)
+    return thread->return_status;
+
+  sema_down (&thread->wait_sema);
 
   return thread->return_status;
 }
@@ -182,6 +182,8 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  sema_up (&cur->wait_sema);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
