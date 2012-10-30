@@ -195,6 +195,18 @@ static int
 read (int fd, void *buffer, unsigned size)
 {
   //read size bytes from fd(file) into buffer
+  //check valid FD
+  if(fd < 0 || fd > 128)
+  {
+    return -1;
+  }
+  char *file = (thread_current()->fds)[fd];
+  if(file == NULL)
+  {
+    return -1;
+  }
+
+
   return 0;
 }
 
@@ -215,4 +227,8 @@ tell (int fd)
 static void 
 close (int fd)
 {
+  if(fd >= 0 && fd < 128)
+  {
+    thread_current()->fds[fd] = NULL;
+  }
 }
