@@ -158,6 +158,12 @@ open (const char *file)
     return -1;
   }
 
+  struct file *opened = filesys_open(file);
+  if(opened == NULL)
+  {
+    return -1;
+  }
+
   //read size bytes from fd(file) into buffer
   char **fds = thread_current()->fds;
   int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
