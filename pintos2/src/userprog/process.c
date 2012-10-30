@@ -85,15 +85,6 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  success = load (file_name, &if_.eip, &if_.esp);
-
-  /* If load failed, quit. */
-  if (!success) 
-    {
-      palloc_free_page (file_name);
-      thread_exit ();
-    }
-
   argv[0] = 0;
   argc = 0;
   arg_size = strlen(file_name) + 1;
@@ -101,10 +92,23 @@ start_process (void *file_name_)
 
   while (next_arg != NULL)
     {
+      while (*save_ptr == ' ')
+        save_ptr++;
       argc++;
       argv[argc] = (void *)((int)save_ptr - (int)file_name);
       next_arg = strtok_r(NULL, " ", &save_ptr);
     }
+
+
+  success = load (file_name, &if_.eip, &if_.esp);
+  /* If load failed, quit. */
+  if (!success) 
+    {
+      palloc_free_page (file_name);
+      thread_exit ();
+    }
+
+
 
   //Copy file_name into the stack
   if_.esp -= arg_size;
@@ -112,7 +116,7 @@ start_process (void *file_name_)
   void *str_begin = if_.esp;
 
   //Word Align
-  if_.esp -= (unsigned)(arg_size % 4);
+  if_.esp -= 4 - (arg_size % 4);
 
   //Last Element of argv
   if_.esp -= 4;
