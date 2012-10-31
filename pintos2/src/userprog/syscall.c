@@ -232,8 +232,6 @@ read (int fd, void *buffer, unsigned size)
 static int 
 write (int fd, const void *buffer, unsigned size)
 {
-  putbuf (buffer, size);
-
   if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
   {
     exit(-1);
@@ -249,13 +247,25 @@ write (int fd, const void *buffer, unsigned size)
     return -1;
   }
 
-  struct file *file = (thread_current()->fds)[fd];
-  //make sure FD points to an open file
-  if(!file)
+  if (fd == 0) 
   {
     return -1;
   }
-  return file_write(&file, buffer, size);
+  else if (fd == 1)
+  {
+    putbuf (buffer, size);
+    return size;
+  }
+  else
+  {
+    struct file *file = (thread_current()->fds)[fd];
+    //make sure FD points to an open file
+    if(!file)
+    {
+      return -1;
+    }
+    return file_write(&file, buffer, size);
+  }
 }
 
 static unsigned 
