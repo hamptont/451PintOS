@@ -33,6 +33,7 @@ static int read (int fd, void *buffer, unsigned size);
 static int write (int fd, const void *buffer, unsigned size);
 static unsigned tell (int fd);
 static void close (int fd);
+static int create (const char *file, unsigned initial_size);
 
 static bool verify_ptr(void *ptr);
 
@@ -54,6 +55,7 @@ syscall_init (void)
   syscall_vec[SYS_WRITE] = (handler)write;
   syscall_vec[SYS_TELL] = (handler)tell;
   syscall_vec[SYS_CLOSE] = (handler)close;
+  syscall_vec[SYS_CREATE] = (handler)create;
 
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
@@ -203,18 +205,32 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned size)
 {
+  int i;
+
   if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
   {
     exit(-1);
   }
 
   //check valid FD
-  if(fd < 0 || fd > 128)
+  if(fd < 0 || fd >= 128)
   {
     return -1;
   }
 
   if(size < 0)
+  {
+    return -1;
+  }
+
+  if (fd == 0) 
+  {
+    for (i = 0; i < size; i++)
+      *(char *)(buffer + i) = input_getc();
+    return size;
+  }
+
+  if (fd == 1)
   {
     return -1;
   }
@@ -236,6 +252,7 @@ write (int fd, const void *buffer, unsigned size)
   {
     exit(-1);
   }
+
   //check for valid FD number
   if(fd > 127 || fd < 0)
   {
@@ -251,21 +268,19 @@ write (int fd, const void *buffer, unsigned size)
   {
     return -1;
   }
-  else if (fd == 1)
+  
+  if (fd == 1)
   {
     putbuf (buffer, size);
     return size;
   }
-  else
-  {
-    struct file *file = (thread_current()->fds)[fd];
-    //make sure FD points to an open file
-    if(!file)
-    {
-      return -1;
-    }
-    return file_write(&file, buffer, size);
-  }
+
+  
+  struct file *file = (thread_current()->fds)[fd];  
+  //make sure FD points to an open file
+  if(!file)
+    return -1;
+  return file_write(&file, buffer, size);
 }
 
 static unsigned 
@@ -291,4 +306,13 @@ close (int fd)
 
 static bool verify_ptr(void *ptr) {
   return is_user_vaddr(ptr) && pagedir_get_page(thread_current()->pagedir, ptr);
+}
+
+static int
+create (const char *file, unsigned initial_size)
+{
+  if (!verify_ptr(file))
+    exit(-1);
+
+  return filesys_create (file, initial_size);
 }
