@@ -137,7 +137,7 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
 
     /* List of open File's.  FD[4] = the File represented by FD 4 */
-    struct file fds[128];
+    struct file *fds[128];
   };
 
 /* If false (default), use round-robin scheduler.

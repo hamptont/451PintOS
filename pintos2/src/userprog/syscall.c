@@ -10,6 +10,7 @@
 #include <console.h>
 
 #include "filesys/filesys.h"
+#include "userprog/pagedir.h"
 
 #define NUM_SYSCALLS 32
 
@@ -159,14 +160,14 @@ open (const char *file)
   }
  
 
-  if(file == NULL || *file == NULL)
+  if(file == NULL)
   {
     //file does not exist
     return -1;
   }
 
   //read size bytes from fd(file) into buffer
-  struct file *fds = thread_current()->fds;
+  struct file **fds = thread_current()->fds;
   int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
   bool foundOpenFD = false;
   //traverse FD list to find lowest avaliable FD
@@ -177,7 +178,7 @@ open (const char *file)
       //we ran out of FDs
       return -1;
     }
-    if(!fds[index].open)
+    if(fds[index] == NULL)
     {
       //we found an avaliable FD
       foundOpenFD = true;
@@ -188,7 +189,7 @@ open (const char *file)
          return -1;
       }
 
-      fds[index].open = opened;
+      fds[index] = opened;
     } 
     else
     {
@@ -214,8 +215,8 @@ read (int fd, void *buffer, unsigned size)
   {
     return -1;
   }
-  struct file file = (thread_current()->fds)[fd];
-  if(!file.open)
+  struct file *file = (thread_current()->fds)[fd];
+  if(file == NULL)
   {
     //this FD is not in use right now
     return -1;
@@ -244,7 +245,13 @@ close (int fd)
 {
   if(fd >= 0 && fd < 128)
   {
-    thread_current()->fds[fd].open = false;
+    struct file *closed = thread_current()->fds[fd];
+
+    if (closed != NULL)
+    {
+      thread_current()->fds[fd] = NULL;
+      file_close (closed);
+    }
   }
 }
 
