@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "threads/synch.h"
+#include "filesys/file.h" 
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -135,8 +136,8 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
-    /* List of open File Descriptors */
-    int fds[128];
+    /* List of open File's.  FD[4] = the File represented by FD 4 */
+    struct file fds[128];
   };
 
 /* If false (default), use round-robin scheduler.

@@ -173,7 +173,7 @@ open (const char *file)
   }
 
   //read size bytes from fd(file) into buffer
-  char **fds = thread_current()->fds;
+  struct file *fds = thread_current()->fds;
   int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
   bool foundOpenFD = false;
   //traverse FD list to find lowest avaliable FD
@@ -184,11 +184,12 @@ open (const char *file)
       //we ran out of FDs
       return -1;
     }
-    if(fds[index] == NULL)
+    if(!fds[index].open)
     {
       //we found an avaliable FD
       foundOpenFD = true;
-      fds[index] = file;
+      opened->open = true;
+      fds[index] = *opened;
     } 
     else
     {
@@ -214,9 +215,10 @@ read (int fd, void *buffer, unsigned size)
   {
     return -1;
   }
-  char *file = (thread_current()->fds)[fd];
-  if(file == NULL)
+  struct file file = (thread_current()->fds)[fd];
+  if(!file.open)
   {
+    //this FD is not in use right now
     return -1;
   }
 
@@ -243,7 +245,7 @@ close (int fd)
 {
   if(fd >= 0 && fd < 128)
   {
-    thread_current()->fds[fd] = NULL;
+    thread_current()->fds[fd].open = false;
   }
 }
 
