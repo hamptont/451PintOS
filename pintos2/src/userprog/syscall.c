@@ -148,7 +148,6 @@ wait (int pid)
 
 /*
  * TODO: need to make sure *file is a valid address / pointer to a valid file
- * fails on open("no-such-file") --> should return -1
  * fails on open((char *) 0x20101234)) --> should call exit(-1)
  */
 static int 
@@ -163,6 +162,7 @@ open (const char *file)
   struct file *opened = filesys_open(file);
   if(opened == NULL)
   {
+    //not a file
     return -1;
   }
 
