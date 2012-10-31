@@ -209,7 +209,11 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned size)
 {
-  //read size bytes from fd(file) into buffer
+  if (!verify_ptr(buffer))
+  {
+    return -1;
+  }
+
   //check valid FD
   if(fd < 0 || fd > 128)
   {
@@ -222,8 +226,7 @@ read (int fd, void *buffer, unsigned size)
     return -1;
   }
 
-
-  return 0;
+  return file_read(file, buffer, size);
 }
 
 static int 
@@ -231,7 +234,23 @@ write (int fd, const void *buffer, unsigned size)
 {
   putbuf (buffer, size);
 
-  return size;
+  if (!verify_ptr(buffer))
+  {
+    return -1;
+  }
+  //check for valid FD number
+  if(fd > 127 || fd < 0)
+  {
+    return -1;
+  }
+
+  struct file *file = (thread_current()->fds)[fd];
+  //make sure FD points to an open file
+  if(!file)
+  {
+    return -1;
+  }
+  return file_write(&file, buffer, size);
 }
 
 static unsigned 
