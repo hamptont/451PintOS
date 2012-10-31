@@ -203,7 +203,7 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned size)
 {
-  if (!verify_ptr(buffer))
+  if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
   {
     exit(-1);
   }
@@ -234,7 +234,7 @@ write (int fd, const void *buffer, unsigned size)
 {
   putbuf (buffer, size);
 
-  if (!verify_ptr(buffer))
+  if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
   {
     exit(-1);
   }
