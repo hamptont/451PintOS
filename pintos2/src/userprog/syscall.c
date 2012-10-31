@@ -50,7 +50,7 @@ syscall_init (void)
   syscall_vec[SYS_PIPE] = (handler)pipe;
   syscall_vec[SYS_WAIT] = (handler)wait;
   syscall_vec[SYS_OPEN] = (handler)open;
-  syscall_vec[SYS_FILESIZE] = (handler)open;
+  syscall_vec[SYS_FILESIZE] = (handler)filesize;
   syscall_vec[SYS_READ] = (handler)read;
   syscall_vec[SYS_WRITE] = (handler)write;
   syscall_vec[SYS_TELL] = (handler)tell;
