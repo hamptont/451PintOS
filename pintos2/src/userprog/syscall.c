@@ -13,6 +13,7 @@
 #include "userprog/pagedir.h"
 
 #define NUM_SYSCALLS 32
+#define MAX_FD 128 /* maximum number of FDs a thread can have open */
 
 static void syscall_handler (struct intr_frame *);
 
@@ -36,7 +37,7 @@ static void close (int fd);
 static int create (const char *file, unsigned initial_size);
 
 static bool verify_ptr(void *ptr);
-
+static bool verify_fd(int fd);
 
 void
 syscall_init (void) 
@@ -147,16 +148,11 @@ dup2 (int old_fd, int new_fd)
   {
     return -1;
   }
- 
-  if(old_fd > 127 || old_fd < 0)
-  {
-    return -1;
-  }
 
-  if(new_fd > 127 || new_fd < 0)
+  if(!verify_fd(old_fd) || !verify_fd(new_fd))
   {
     return -1;
-  }
+  } 
 
   struct file **fds = thread_current()->fds;
   struct file *old_file = fds[old_fd];
@@ -182,12 +178,7 @@ pipe (int pipe[2])
   int fd0 = pipe[0];
   int fd1 = pipe[1];
 
-  if(fd0 > 127 || fd0 < 0)
-  {
-    return -1;
-  }
-
-  if(fd1 > 127 || fd1 < 0)
+  if(!verify_fd(fd0) || !verify_fd(fd1))
   {
     return -1;
   }
@@ -233,7 +224,7 @@ open (const char *file)
   //traverse FD list to find lowest avaliable FD
   while(!foundOpenFD)
   {
-    if(index == 128) 
+    if(index == MAX_FD) 
     {
       //we ran out of FDs
       return -1;
@@ -263,7 +254,7 @@ open (const char *file)
 static int 
 filesize (int fd)
 {
-  if (fd < 0 || fd >= 128)
+  if (!verify_fd(fd))
     return -1;
 
   struct file *file = thread_current()->fds[fd];
@@ -284,12 +275,7 @@ read (int fd, void *buffer, unsigned size)
   }
 
   //check valid FD
-  if(fd < 0 || fd >= 128)
-  {
-    return -1;
-  }
-
-  if(size < 0)
+  if(!verify_fd(fd))
   {
     return -1;
   }
@@ -325,12 +311,7 @@ write (int fd, const void *buffer, unsigned size)
   }
 
   //check for valid FD number
-  if(fd > 127 || fd < 0)
-  {
-    return -1;
-  }
-
-  if(size < 0)
+  if(!verify_fd(fd))
   {
     return -1;
   }
@@ -363,7 +344,7 @@ tell (int fd)
 static void 
 close (int fd)
 {
-  if(fd >= 0 && fd < 128)
+  if(verify_fd(fd))
   {
     struct file *closed = thread_current()->fds[fd];
 
@@ -386,4 +367,14 @@ create (const char *file, unsigned initial_size)
     exit(-1);
 
   return filesys_create (file, initial_size);
+}
+
+
+static bool verify_fd(int fd)
+{
+  if(fd < 0 || fd >= MAX_FD)
+  {
+    return false;
+  }
+  return true;
 }
