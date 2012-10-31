@@ -9,6 +9,8 @@
 #include "devices/shutdown.h"
 #include <console.h>
 
+#include "filesys/filesys.h"
+
 #define NUM_SYSCALLS 32
 
 static void syscall_handler (struct intr_frame *);
@@ -31,7 +33,7 @@ static int write (int fd, const void *buffer, unsigned size);
 static unsigned tell (int fd);
 static void close (int fd);
 
-
+static bool verify_ptr(void *ptr);
 
 
 void
@@ -63,7 +65,7 @@ syscall_handler (struct intr_frame *f)
 
   //Test valid stack pointer
   
-  if (!is_user_vaddr (sp))
+  if (!verify_ptr(sp))
     {
       exit(-1);
       return;
@@ -78,9 +80,9 @@ syscall_handler (struct intr_frame *f)
     }
 
   //Test valid arguments
-  if (!is_user_vaddr (sp + 1) ||
-      !is_user_vaddr (sp + 2) ||
-      !is_user_vaddr (sp + 3))
+  if (!verify_ptr (sp + 1) ||
+      !verify_ptr (sp + 2) ||
+      !verify_ptr (sp + 3))
     {
       exit(-1);
       return;
@@ -237,4 +239,8 @@ close (int fd)
   {
     thread_current()->fds[fd] = NULL;
   }
+}
+
+static bool verify_ptr(void *ptr) {
+  return is_user_vaddr(ptr) && pagedir_get_page(thread_current()->pagedir, ptr);
 }
