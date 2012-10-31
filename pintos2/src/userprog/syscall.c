@@ -199,7 +199,14 @@ open (const char *file)
 static int 
 filesize (int fd)
 {
-  return 0;
+  if (fd < 0 || fd >= 128)
+    return -1;
+
+  struct file *file = thread_current()->fds[fd];
+  if (file == NULL)
+    return -1;
+
+  return file_length (file);
 }
 
 static int 
@@ -280,7 +287,7 @@ write (int fd, const void *buffer, unsigned size)
   //make sure FD points to an open file
   if(!file)
     return -1;
-  return file_write(&file, buffer, size);
+  return file_write(file, buffer, size);
 }
 
 static unsigned 
