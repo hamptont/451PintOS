@@ -188,7 +188,7 @@ open (const char *file)
          return -1;
       }
 
-      fds[index] = opened;
+      fds[index].open = opened;
     } 
     else
     {
