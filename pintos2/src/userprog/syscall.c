@@ -165,13 +165,6 @@ open (const char *file)
     return -1;
   }
 
-  struct file *opened = filesys_open(file);
-  if(opened == NULL)
-  {
-    //not a file
-    return -1;
-  }
-
   //read size bytes from fd(file) into buffer
   char **fds = thread_current()->fds;
   int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
@@ -188,7 +181,15 @@ open (const char *file)
     {
       //we found an avaliable FD
       foundOpenFD = true;
-      fds[index] = file;
+
+      struct file *opened = filesys_open(file);
+      if(opened == NULL)
+      {
+        //not a file
+         return -1;
+      }
+
+      fds[index] = opened;
     } 
     else
     {
@@ -243,6 +244,9 @@ close (int fd)
 {
   if(fd >= 0 && fd < 128)
   {
+    struct file *closed = thread_current()->fds[fd];
+    if (closed != NULL)
+      file_close(closed);
     thread_current()->fds[fd] = NULL;
   }
 }
