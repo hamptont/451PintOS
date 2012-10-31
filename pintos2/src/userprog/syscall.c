@@ -133,12 +133,76 @@ exec (const char *cmd_line)
 static int 
 dup2 (int old_fd, int new_fd)
 {
-  return 0;
+/*
+ * It looks like this implementation should work but I don't see any
+ * tests that test this syscall???
+ *
+ * After this function is called, there are multiple FDs pointing to the 
+ * same file. Not sure if we have to worry about what happens when one
+ * of the FDs call close on it's file, while another FD is still trying
+ * to use the file. 
+ */
+
+  if(old_fd == new_fd)
+  {
+    return -1;
+  }
+ 
+  if(old_fd > 127 || old_fd < 0)
+  {
+    return -1;
+  }
+
+  if(new_fd > 127 || new_fd < 0)
+  {
+    return -1;
+  }
+
+  struct file **fds = thread_current()->fds;
+  struct file *old_file = fds[old_fd];
+
+  if(old_file == NULL)
+  {
+    return -1;
+  }
+
+  fds[new_fd] = old_file;
+
+  return new_fd;
 }
 
 static int 
 pipe (int pipe[2])
 {
+  if(pipe == NULL)
+  {
+    return -1;
+  }
+
+  int fd0 = pipe[0];
+  int fd1 = pipe[1];
+
+  if(fd0 > 127 || fd0 < 0)
+  {
+    return -1;
+  }
+
+  if(fd1 > 127 || fd1 < 0)
+  {
+    return -1;
+  }
+
+  struct file **fds = thread_current()->fds;
+  struct file *read_file = fds[fd0];
+
+  if(read_file == NULL)
+  {
+    return -1;
+  }
+  //Make write_end's FD the FD that read_end uses
+  fds[fd1] = read_file;
+
+  //on success, return 0
   return 0;
 }
 
