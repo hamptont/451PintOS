@@ -153,6 +153,12 @@ wait (int pid)
 static int 
 open (const char *file)
 {
+  if (!verify_ptr(file))
+  {
+    exit(-1);
+  }
+ 
+
   if(file == NULL || *file == NULL)
   {
     //file does not exist
