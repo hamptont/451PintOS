@@ -146,11 +146,6 @@ wait (int pid)
   return process_wait(pid); 
 }
 
-
-/*
- * TODO: need to make sure *file is a valid address / pointer to a valid file
- * fails on open((char *) 0x20101234)) --> should call exit(-1)
- */
 static int 
 open (const char *file)
 {
@@ -159,7 +154,6 @@ open (const char *file)
     exit(-1);
   }
  
-
   if(file == NULL)
   {
     //file does not exist
@@ -211,7 +205,7 @@ read (int fd, void *buffer, unsigned size)
 {
   if (!verify_ptr(buffer))
   {
-    return -1;
+    exit(-1);
   }
 
   //check valid FD
@@ -219,6 +213,12 @@ read (int fd, void *buffer, unsigned size)
   {
     return -1;
   }
+
+  if(size < 0)
+  {
+    return -1;
+  }
+
   struct file *file = (thread_current()->fds)[fd];
   if(file == NULL)
   {
@@ -236,10 +236,15 @@ write (int fd, const void *buffer, unsigned size)
 
   if (!verify_ptr(buffer))
   {
-    return -1;
+    exit(-1);
   }
   //check for valid FD number
   if(fd > 127 || fd < 0)
+  {
+    return -1;
+  }
+
+  if(size < 0)
   {
     return -1;
   }
