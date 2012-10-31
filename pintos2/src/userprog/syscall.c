@@ -174,6 +174,35 @@ dup2 (int old_fd, int new_fd)
 static int 
 pipe (int pipe[2])
 {
+  if(pipe == NULL)
+  {
+    return -1;
+  }
+
+  int fd0 = pipe[0];
+  int fd1 = pipe[1];
+
+  if(fd0 > 127 || fd0 < 0)
+  {
+    return -1;
+  }
+
+  if(fd1 > 127 || fd1 < 0)
+  {
+    return -1;
+  }
+
+  struct file **fds = thread_current()->fds;
+  struct file *read_file = fds[fd0];
+
+  if(read_file == NULL)
+  {
+    return -1;
+  }
+  //Make write_end's FD the FD that read_end uses
+  fds[fd1] = read_file;
+
+  //on success, return 0
   return 0;
 }
 
