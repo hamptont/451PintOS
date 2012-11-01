@@ -51,6 +51,11 @@ process_execute (const char *file_name)
 
   prog_name = strtok_r (prog_name, " ", &saveptr);
 
+  struct file *file = filesys_open(prog_name);
+  if (file == NULL)
+    return TID_ERROR;
+  file_deny_write(file);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -59,6 +64,12 @@ process_execute (const char *file_name)
       palloc_free_page (prog_name);
     }
 
+  struct thread *t = thread_from_tid (tid);
+  sema_down (&t->wait_sema);
+  if (t->return_status == -1){
+    tid = TID_ERROR; 
+    process_wait (t->tid);
+  }
 
   return tid;
 }
@@ -105,6 +116,7 @@ start_process (void *file_name_)
   if (!success) 
     {
       palloc_free_page (file_name);
+      sema_up (&thread_current()->wait_sema);
       thread_exit ();
     }
 
@@ -141,6 +153,8 @@ start_process (void *file_name_)
   if_.esp -= 4;
   *(int *)(if_.esp) = 0; 
 
+  sema_up(&thread_current()->wait_sema);
+
   palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an
@@ -165,19 +179,17 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread *thread = thread_from_tid(child_tid);
+  struct thread *child = thread_from_tid(child_tid);
 
-  if (thread == NULL)
-    {
+  if (child == NULL)
       return -1;
-    }
 
-  if (thread->return_status != -1)
-    return thread->return_status;
+  if (child->return_status != -1)
+    return child->return_status;
 
-  sema_down (&thread->wait_sema);
+  sema_down (&child->wait_sema);
 
-  return thread->return_status;
+  return child->return_status;
 }
 
 /* Free the current process's resources. */

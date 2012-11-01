@@ -108,7 +108,7 @@ halt (void)
 }
 
 
-static void 
+void 
 exit (int status)
 {
   struct thread *t = thread_current();
@@ -128,7 +128,13 @@ fork (void)
 static int 
 exec (const char *cmd_line)
 {
-  return 0;
+  if(!verify_ptr(cmd_line))
+    exit(-1);
+
+  tid_t tid = process_execute(cmd_line);
+  if (tid == TID_ERROR)
+    return -1;
+  return tid;
 }
 
 static int 
