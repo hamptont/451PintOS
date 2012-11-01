@@ -22,7 +22,6 @@ typedef void *(*handler) (void *arg1, void *arg2, void *arg3);
 static handler syscall_vec[NUM_SYSCALLS];
 
 static void halt (void);
-static void exit (int status);
 static int  fork (void);
 static int exec (const char *cmd_line);
 static int dup2 (int old_fd, int new_fd);
