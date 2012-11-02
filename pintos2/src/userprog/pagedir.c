@@ -50,35 +50,33 @@ pagedir_destroy (uint32_t *pd)
 void
 pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd) 
 {
-  if (child_pd == NULL || parent_pd == NULL)
-  {
-    return;
-  }
-
-  //for each page directory entry in parent page directly
   uint32_t *parent_pde;
-  for (parent_pde = parent_pd; parent_pde < parent_pd + pd_no (PHYS_BASE); parent_pde++)
+
+  if (parent_pd == NULL)
+    return;
+
+  ASSERT (parent_pd != init_page_dir);
+  for (parent_pde = parent_pd; 
+       parent_pde < parent_pd + pd_no (PHYS_BASE); 
+       parent_pde++)
   {
-    //if parent page directly entry is not NULL
     if (*parent_pde & PTE_P) 
-     {
-        uint32_t *pt = pde_get_pt (*parent_pde);
+      {
+        uint32_t *parent_pt = pde_get_pt (*parent_pde);
+        uint32_t *parent_pte;
         
-        //for each address in the page:
-        uint32_t *pte;
-        for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++)
+        for (parent_pte = parent_pt; 
+             parent_pte < parent_pt + PGSIZE / sizeof *parent_pte; 
+             parent_pte++)
         {
-          if (*pte & PTE_P) 
+          if (*parent_pte & PTE_P) 
           {
-            uint32_t pt = palloc_get_page (PAL_ZERO);
-            if (pt == NULL)
-            { 
-              return NULL; 
-            }
-            uint32_t *pde = pde_create (pt);
+            uint32_t *kpage = palloc_get_page(0);
+            memcpy (kpage, pte_get_page(*parent_pte), PGSIZE);
+            pagedir_set_page (child_pd, , kpage, true);
           }
-       }
-     }
+        }
+      }
   }
 }
 

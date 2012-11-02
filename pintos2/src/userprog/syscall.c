@@ -123,9 +123,8 @@ fork (void)
 
   child->pagedir = pagedir_create();
   //copy over each page write function to loop through pages
-  memcpy(child->pagedir, parent->pagedir, PGSIZE);
-  pagedir_dup (child->pagedir, parent->pagedir);
   //memcpy(child->pagedir, parent->pagedir, PGSIZE);
+  pagedir_dup (child->pagedir, parent->pagedir);
 
   //copy over fds 
   for (i = 0; i < MAX_FD; i++) 
