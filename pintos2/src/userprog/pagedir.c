@@ -47,6 +47,34 @@ pagedir_destroy (uint32_t *pd)
   palloc_free_page (pd);
 }
 
+/*
+void
+pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd) 
+{
+  uint32_t *pde;
+
+  if (child_pd == NULL || parent_pd == NULL)
+    return;
+
+  for (parent_pde = parent_pd; parent_pde < parent_pd + pd_no (PHYS_BASE); pde++)
+  {
+    if (*parent_pde & PTE_P) 
+     {
+        uint32_t *pt = pde_get_pt (*parent_pde);
+        uint32_t *pte;
+        
+        for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++)
+        {
+          if (*pte & PTE_P) 
+          {
+                
+          }
+        }
+     }
+  }
+}
+*/
+
 /* Returns the address of the page table entry for virtual
    address VADDR in page directory PD.
    If PD does not have a page table for VADDR, behavior depends

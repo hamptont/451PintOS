@@ -39,7 +39,7 @@ process_execute (const char *file_name)
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   prog_name = palloc_get_page (0);
-  if (fn_copy == NULL/* || prog_name == NULL*/) 
+  if (fn_copy == NULL || prog_name == NULL) 
     {
       palloc_free_page (fn_copy);
       palloc_free_page (prog_name);
@@ -167,6 +167,32 @@ start_process (void *file_name_)
   NOT_REACHED ();
 }
 
+
+void
+process_fork (void)
+{
+  struct intr_frame if_;
+
+  /* Initialize interrupt frame and load executable. */
+  memset (&if_, 0, sizeof if_);
+  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+  if_.cs = SEL_UCSEG;
+  if_.eflags = FLAG_IF | FLAG_MBS;
+
+  sema_down(&thread_current()->wait_sema);
+
+  if_.eax = 0;
+
+  /* Start the user process by simulating a return from an
+ * interrupt, implemented by intr_exit (in
+ * threads/intr-stubs.S). Because intr_exit takes all of its
+ * arguments on the stack in the form of a `struct intr_frame',
+ * we just point the stack pointer (%esp) to our stack frame
+ * and jump to it. */
+  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  NOT_REACHED ();
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -198,7 +224,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  
   sema_up (&cur->wait_sema);
 
   /* Destroy the current process's page directory and switch back

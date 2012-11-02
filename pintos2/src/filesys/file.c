@@ -4,6 +4,7 @@
 #include "threads/malloc.h"
 
 /* An open file. */
+
 struct file 
   {
     struct inode *inode;        /* File's inode. */
@@ -165,4 +166,11 @@ file_tell (struct file *file)
 {
   ASSERT (file != NULL);
   return file->pos;
+}
+
+bool
+get_deny_write (struct file *file)
+{
+  ASSERT (file != NULL);
+  return file->deny_write;
 }

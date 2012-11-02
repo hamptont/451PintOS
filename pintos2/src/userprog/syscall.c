@@ -57,6 +57,8 @@ syscall_init (void)
   syscall_vec[SYS_CLOSE] = (handler)close;
   syscall_vec[SYS_CREATE] = (handler)create;
 
+  lock_init (&filesys_lock);
+
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -69,18 +71,12 @@ syscall_handler (struct intr_frame *f)
   //Test valid stack pointer
   
   if (!verify_ptr(sp))
-    {
       exit(-1);
-      return;
-    }
   
   int syscall_num = *sp;
   //Test valid syscall num
   if (syscall_num < 0 || syscall_num >= NUM_SYSCALLS)
-    {
       exit(-1);
-      return;
-    }
 
   //Test valid arguments
   if (!verify_ptr (sp + 1) ||
@@ -88,7 +84,6 @@ syscall_handler (struct intr_frame *f)
       !verify_ptr (sp + 3))
     {
       exit(-1);
-      return;
     }
       
 
@@ -121,7 +116,33 @@ exit (int status)
 static int 
 fork (void)
 {
-  return 0;
+  int i;
+  struct thread *parent = thread_current();
+  tid_t child_tid = thread_create (parent, PRI_DEFAULT, process_fork, NULL);
+  struct thread *child = thread_from_tid(child_tid);
+
+  child->pagedir = pagedir_create();
+  //copy over each page write function to loop through pages
+  //pagedir_dup (child->pagedir, parent->pagedir);
+  //memcpy(child->pagedir, parent->pagedir, PGSIZE);
+
+  //copy over fds 
+  for (i = 0; i < MAX_FD; i++) 
+  {
+    if (parent->fds[i] != NULL)
+    {
+      child->fds[i] = file_reopen(parent->fds[i]);
+      file_seek (child->fds[i], file_tell (parent->fds[i]));
+      if (get_deny_write (parent->fds[i]))
+      {
+        file_deny_write (child->fds[i]);
+      }
+    }
+  }
+
+  sema_up(&child->wait_sema);
+
+  return child_tid;
 }
 
 static int 
@@ -150,22 +171,16 @@ dup2 (int old_fd, int new_fd)
  */
 
   if(old_fd == new_fd)
-  {
     return -1;
-  }
 
   if(!verify_fd(old_fd) || !verify_fd(new_fd))
-  {
     return -1;
-  } 
 
   struct file **fds = thread_current()->fds;
   struct file *old_file = fds[old_fd];
 
   if(old_file == NULL)
-  {
     return -1;
-  }
 
   fds[new_fd] = old_file;
 
@@ -176,25 +191,19 @@ static int
 pipe (int pipe[2])
 {
   if(pipe == NULL)
-  {
     return -1;
-  }
 
   int fd0 = pipe[0];
   int fd1 = pipe[1];
 
   if(!verify_fd(fd0) || !verify_fd(fd1))
-  {
     return -1;
-  }
 
   struct file **fds = thread_current()->fds;
   struct file *read_file = fds[fd0];
 
   if(read_file == NULL)
-  {
     return -1;
-  }
   //Make write_end's FD the FD that read_end uses
   fds[fd1] = read_file;
 
@@ -212,16 +221,10 @@ static int
 open (const char *file)
 {
   if (!verify_ptr(file))
-  {
     exit(-1);
-  }
  
-  if(file == NULL)
-  {
-    //file does not exist
-    return -1;
-  }
 
+  lock_acquire(&filesys_lock);
   //read size bytes from fd(file) into buffer
   struct file **fds = thread_current()->fds;
   int index = 3; //FD 0, 1, 2 are reserver for std in, out, err
@@ -232,6 +235,7 @@ open (const char *file)
     if(index == MAX_FD) 
     {
       //we ran out of FDs
+      lock_release(&filesys_lock);
       return -1;
     }
     if(fds[index] == NULL)
@@ -242,6 +246,7 @@ open (const char *file)
       if(opened == NULL)
       {
         //not a file
+         lock_release(&filesys_lock);
          return -1;
       }
 
@@ -253,6 +258,8 @@ open (const char *file)
       index++;
     }
   }
+
+  lock_release(&filesys_lock);
   return index;
 }
 
@@ -266,7 +273,11 @@ filesize (int fd)
   if (file == NULL)
     return -1;
 
-  return file_length (file);
+  lock_acquire(&filesys_lock);
+  int length = file_length (file);
+  lock_release(&filesys_lock);
+
+  return length;
 }
 
 static int 
@@ -275,25 +286,25 @@ read (int fd, void *buffer, unsigned size)
   int i;
 
   if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
-  {
     exit(-1);
-  }
 
   //check valid FD
   if(!verify_fd(fd))
-  {
     return -1;
-  }
 
+
+  lock_acquire(&filesys_lock);
   if (fd == 0) 
   {
     for (i = 0; i < size; i++)
       *(char *)(buffer + i) = input_getc();
+    lock_release(&filesys_lock);
     return size;
   }
 
   if (fd == 1)
   {
+    lock_release(&filesys_lock);
     return -1;
   }
 
@@ -301,34 +312,37 @@ read (int fd, void *buffer, unsigned size)
   if(file == NULL)
   {
     //this FD is not in use right now
+    lock_release(&filesys_lock);
     return -1;
   }
 
-  return file_read(file, buffer, size);
+
+  int bytes_read = file_read(file, buffer, size);
+  lock_release(&filesys_lock);
+  return bytes_read;
 }
 
 static int 
 write (int fd, const void *buffer, unsigned size)
 {
   if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
-  {
     exit(-1);
-  }
 
   //check for valid FD number
   if(!verify_fd(fd))
+    return -1;
+
+  lock_acquire(&filesys_lock);
+  if (fd == 0) 
   {
+    lock_release(&filesys_lock);
     return -1;
   }
 
-  if (fd == 0) 
-  {
-    return -1;
-  }
-  
   if (fd == 1)
   {
     putbuf (buffer, size);
+    lock_release(&filesys_lock);
     return size;
   }
 
@@ -336,14 +350,26 @@ write (int fd, const void *buffer, unsigned size)
   struct file *file = (thread_current()->fds)[fd];  
   //make sure FD points to an open file
   if(!file)
+  {
+    lock_release(&filesys_lock);
     return -1;
-  return file_write(file, buffer, size);
+  }
+
+  int bytes_written = file_write(file, buffer, size);
+  lock_release(&filesys_lock);
+  return bytes_written;
 }
 
 static unsigned 
 tell (int fd)
 {
-  return 0;
+  if (!verify_fd(fd))
+    return -1;
+
+  lock_acquire(&filesys_lock);
+  int pos = file_tell(thread_current()->fds[fd]);
+  lock_release(&filesys_lock);
+  return pos;
 }
 
 static void 
@@ -353,11 +379,13 @@ close (int fd)
   {
     struct file *closed = thread_current()->fds[fd];
 
+    lock_acquire(&filesys_lock);
     if (closed != NULL)
     {
       thread_current()->fds[fd] = NULL;
       file_close (closed);
     }
+    lock_release(&filesys_lock);
   }
 }
 
