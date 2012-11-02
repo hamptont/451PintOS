@@ -47,32 +47,39 @@ pagedir_destroy (uint32_t *pd)
   palloc_free_page (pd);
 }
 
-
 void
 pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd) 
 {
-/*
-  uint32_t *pde;
-
   if (child_pd == NULL || parent_pd == NULL)
-    return;
-
-  for (parent_pde = parent_pd; parent_pde < parent_pd + pd_no (PHYS_BASE); pde++)
   {
+    return;
+  }
+
+  //for each page directory entry in parent page directly
+  uint32_t *parent_pde;
+  for (parent_pde = parent_pd; parent_pde < parent_pd + pd_no (PHYS_BASE); parent_pde++)
+  {
+    //if parent page directly entry is not NULL
     if (*parent_pde & PTE_P) 
      {
         uint32_t *pt = pde_get_pt (*parent_pde);
-        uint32_t *pte;
         
+        //for each address in the page:
+        uint32_t *pte;
         for (pte = pt; pte < pt + PGSIZE / sizeof *pte; pte++)
         {
           if (*pte & PTE_P) 
           {
-                
+            uint32_t pt = palloc_get_page (PAL_ZERO);
+            if (pt == NULL)
+            { 
+              return NULL; 
+            }
+            uint32_t *pde = pde_create (pt);
           }
-        }
+       }
      }
-  }*/
+  }
 }
 
 
