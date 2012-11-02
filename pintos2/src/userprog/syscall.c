@@ -118,12 +118,13 @@ fork (void)
 {
   int i;
   struct thread *parent = thread_current();
-  tid_t child_tid = thread_create (parent, PRI_DEFAULT, process_fork, NULL);
+  tid_t child_tid = thread_create (parent->name, PRI_DEFAULT, process_fork, NULL);
   struct thread *child = thread_from_tid(child_tid);
 
   child->pagedir = pagedir_create();
   //copy over each page write function to loop through pages
-  //pagedir_dup (child->pagedir, parent->pagedir);
+  memcpy(child->pagedir, parent->pagedir, PGSIZE);
+  pagedir_dup (child->pagedir, parent->pagedir);
   //memcpy(child->pagedir, parent->pagedir, PGSIZE);
 
   //copy over fds 
