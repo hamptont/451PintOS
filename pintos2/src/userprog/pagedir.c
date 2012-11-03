@@ -73,7 +73,17 @@ pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd)
           {
             uint32_t *kpage = palloc_get_page(0);
             memcpy (kpage, pte_get_page(*parent_pte), PGSIZE);
-            pagedir_set_page (child_pd, , kpage, true);
+           
+            uint32_t pd_off = ((uint32_t)parent_pde - (uint32_t)parent_pd);
+            uint32_t pt_off = ((uint32_t)parent_pte - (uint32_t)parent_pt);
+
+            pd_off = (pd_off & 0x3ff);
+            pt_off = (pt_off & 0x3ff);
+
+            uint32_t *upage = (pd_off << 22) | (pt_off << 12);
+            
+            pagedir_set_page (child_pd, upage, kpage, 
+                              (int)pte_get_page(*parent_pte) & PTE_W);
           }
         }
       }

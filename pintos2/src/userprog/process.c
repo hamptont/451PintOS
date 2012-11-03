@@ -64,13 +64,19 @@ process_execute (const char *file_name)
       palloc_free_page (prog_name);
     }
 
+  /* Waits for child thread to finish loading */
   struct thread *t = thread_from_tid (tid);
   sema_down (&t->wait_sema);
-  if (t->return_status == -1){
-    tid = TID_ERROR; 
-    process_wait (t->tid);
-  }
 
+  if (t == NULL)
+    tid = TID_ERROR;
+    
+  int ret_status = process_wait(t->tid);
+  if (ret_status == -1)
+    tid = TID_ERROR;
+  
+  /* Frees prog-name after is is used to load the correct file */
+  palloc_free_page(prog_name);
   return tid;
 }
 
@@ -153,6 +159,7 @@ start_process (void *file_name_)
   if_.esp -= 4;
   *(int *)(if_.esp) = 0; 
 
+  //Tell the parent that the thread has finished loading.
   sema_up(&thread_current()->wait_sema);
 
   palloc_free_page (file_name);
@@ -207,12 +214,17 @@ process_wait (tid_t child_tid)
 {
   struct thread *child = thread_from_tid(child_tid);
 
+  //Thread does not exist
   if (child == NULL)
       return -1;
 
+  //-1 is the default value of return status
+  //If not -1, the return status has already been set
+  //return the new status
   if (child->return_status != -1)
     return child->return_status;
 
+  
   sema_down (&child->wait_sema);
 
   return child->return_status;
