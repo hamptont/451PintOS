@@ -539,6 +539,9 @@ init_thread (struct thread *t, const char *name, int priority)
 #ifdef USERPROG
   t->return_status = -1;
   sema_init(&t->wait_sema, 0);
+  list_init(&t->child_list);
+  t->parent = NULL;
+  t->program = NULL;
 #endif
 
   old_level = intr_disable ();

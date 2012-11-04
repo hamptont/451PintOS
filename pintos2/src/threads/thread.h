@@ -7,7 +7,7 @@
 
 #include "threads/synch.h"
 #include "filesys/file.h" 
-#include "userprog/syscall.h"
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -131,13 +131,19 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct semaphore wait_sema;
+
+    bool exited;
+    struct list child_list;
+    struct list_elem child_list_elem;
+    struct thread *parent;
+    struct file *program;
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
     /* List of open File's.  FD[4] = the File represented by FD 4 */
-    struct file *fds[MAX_FD];
+    struct file *fds[128];
   };
 
 /* If false (default), use round-robin scheduler.

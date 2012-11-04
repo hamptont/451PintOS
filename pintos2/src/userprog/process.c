@@ -54,6 +54,8 @@ process_execute (const char *file_name)
   struct file *file = filesys_open(prog_name);
   if (file == NULL)
     return TID_ERROR;
+
+  thread_current()->program = file;
   file_deny_write(file);
 
   /* Create a new thread to execute FILE_NAME. */
@@ -216,15 +218,10 @@ process_wait (tid_t child_tid)
 
   //Thread does not exist
   if (child == NULL)
-      return -1;
+    return -1;
 
-  //-1 is the default value of return status
-  //If not -1, the return status has already been set
-  //return the new status
   if (child->return_status != -1)
     return child->return_status;
-
-  
   sema_down (&child->wait_sema);
 
   return child->return_status;
@@ -238,6 +235,35 @@ process_exit (void)
   uint32_t *pd;
   
   sema_up (&cur->wait_sema);
+  if (cur->parent != NULL)
+  {
+    cur->exited = true;
+    sema_down(&cur->wait_sema);
+  }
+ 
+  struct list_elem *e;
+  for (e = list_begin (&cur->child_list);
+       e != list_end (&cur->child_list);
+       e = list_next (e))
+  {
+    struct thread *child = list_entry (e, struct thread, child_list_elem);
+    child->parent = NULL;
+    if (child->exited)
+    {
+      sema_up (&child->wait_sema);
+    }
+  }
+
+  int i;
+  for (i = 0; i < 128; i++)
+  {
+    if (cur->fds[i] != NULL)
+    {
+      file_close (cur->fds[i]);
+    }
+  }
+
+  file_close (cur->program);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
