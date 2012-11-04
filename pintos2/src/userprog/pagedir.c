@@ -56,6 +56,8 @@ pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd)
     return;
 
   ASSERT (parent_pd != init_page_dir);
+  uint32_t pd_index = 0;
+  uint32_t pt_index = 0;
   for (parent_pde = parent_pd; 
        parent_pde < parent_pd + pd_no (PHYS_BASE); 
        parent_pde++)
@@ -65,28 +67,33 @@ pagedir_dup (uint32_t *child_pd, uint32_t *parent_pd)
         uint32_t *parent_pt = pde_get_pt (*parent_pde);
         uint32_t *parent_pte;
         
+        pt_index = 0;
         for (parent_pte = parent_pt; 
              parent_pte < parent_pt + PGSIZE / sizeof *parent_pte; 
              parent_pte++)
         {
           if (*parent_pte & PTE_P) 
           {
-            uint32_t *kpage = palloc_get_page(0);
+            uint32_t *kpage = palloc_get_page(PAL_USER);
             memcpy (kpage, pte_get_page(*parent_pte), PGSIZE);
            
-            uint32_t pd_off = ((uint32_t)parent_pde - (uint32_t)parent_pd);
+            /* /uint32_t pd_off = ((uint32_t)parent_pde - (uint32_t)parent_pd);
             uint32_t pt_off = ((uint32_t)parent_pte - (uint32_t)parent_pt);
 
             pd_off = (pd_off & 0x3ff);
             pt_off = (pt_off & 0x3ff);
 
-            uint32_t *upage = (pd_off << 22) | (pt_off << 12);
+            */
+
+            uint32_t *upage = (pd_index << PDSHIFT) | (pt_index << PTSHIFT);
             
             pagedir_set_page (child_pd, upage, kpage, 
-                              (int)pte_get_page(*parent_pte) & PTE_W);
+                              *parent_pte & PTE_W);
           }
+          pt_index++;
         }
       }
+    pd_index++;
   }
 }
 
