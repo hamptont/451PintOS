@@ -13,8 +13,6 @@
 #include "userprog/pagedir.h"
 
 #define NUM_SYSCALLS 32
-#define MAX_FD 128 /* maximum number of FDs a thread can have open */
-
 static void syscall_handler (struct intr_frame *);
 
 typedef void *(*handler) (void *arg1, void *arg2, void *arg3);
@@ -201,23 +199,49 @@ static int
 pipe (int pipe[2])
 {
   if(pipe == NULL)
+  {
+    //we ran out of FDs
     return -1;
+  }
 
-  int fd0 = pipe[0];
-  int fd1 = pipe[1];
+  bool foundOpenIndex = false;
+  int index = 0;
+  while(!foundOpenIndex)
+  {
+    if(index == MAX_PIPES)
+    {
+      return -1;
+    }
+    if(pipe_buffer_array[index] == NULL)
+    {
+      //found a spot to store our pipe
+      foundOpenIndex = true;
+      struct pipe_buffer *buffer = calloc(1, sizeof(struct pipe_buffer));
+      if(buffer == NULL)
+      {
+        //calloc failed
+        return -1;
+      }
+      buffer->start = 0;
+      buffer->end = 0;
+      buffer->size = 0;
+      pipe_buffer_array[index] = buffer;
 
-  if(!verify_fd(fd0) || !verify_fd(fd1))
-    return -1;
+      //FDs 0 to MAX_FDs - 1 are for regular FDs,
+      //FDs MAX_FD to MAX_FD + MAX_PIPES * 2 - 1 are for pipe FDs 
+      //Each index in pipe_buffer_array map to two file descriptors, read end and write end
+      pipe[0] = MAX_FD + index * 2; //read end
+      pipe[1] = pipe[0] + 1;  //write end
 
-  struct file **fds = thread_current()->fds;
-  struct file *read_file = fds[fd0];
-
-  if(read_file == NULL)
-    return -1;
-  //Make write_end's FD the FD that read_end uses
-  fds[fd1] = read_file;
-
-  //on success, return 0
+      buffer->fd_read = pipe[0];
+      buffer->fd_write = pipe[1];
+    }
+    else
+    {
+      //index is in use, check next one
+      index++;
+    }    
+  }
   return 0;
 }
 
@@ -293,41 +317,76 @@ filesize (int fd)
 static int 
 read (int fd, void *buffer, unsigned size)
 {
-  int i;
-
-  if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
-    exit(-1);
-
-  //check valid FD
-  if(!verify_fd(fd))
-    return -1;
-
-
   lock_acquire(&filesys_lock);
-  if (fd == 0) 
+  int i;
+  if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
   {
-    for (i = 0; i < size; i++)
-      *(char *)(buffer + i) = input_getc();
     lock_release(&filesys_lock);
-    return size;
-  }
-
-  if (fd == 1)
+    exit(-1);
+  } 
+  int bytes_read; 
+  if(fd < MAX_FD && fd >= 0)
   {
+    //case where FD is for a regular file
+    if (fd == 0) 
+    {
+      for (i = 0; i < size; i++)
+      {
+        *(char *)(buffer + i) = input_getc();
+      }
+      lock_release(&filesys_lock);
+      return size;
+    }
+
+    if (fd == 1)
+    {
+      lock_release(&filesys_lock);
+      return -1;
+    }
+
+    struct file *file = (thread_current()->fds)[fd];
+    if(file == NULL)
+    {
+      //this FD is not in use right now
+      lock_release(&filesys_lock);
+      return -1;
+    }
+    bytes_read = file_read(file, buffer, size);
+  }
+  else if((fd < (MAX_FD + MAX_PIPES * 2)) && (fd >= 0)) //each pipe is 2 FDs
+  {
+    //case where the FD is part of a pipe
+    if(fd % 2 == 1)
+    {
+      //odd pipe FDs are for writing ends of the pipe, can't read from it!
+      lock_release(&filesys_lock);
+      return -1;
+    }
+    //find the index the pipe_buffer struct is stored in our pipe_buffer array
+    int pipe_array_index = (fd - MAX_FD) / 2;
+    struct pipe_buffer *pipe_buffer = pipe_buffer_array[pipe_array_index];
+    int read_index = pipe_buffer->start; //next char to be read
+    uint32_t buffer_index = 0; //index to write to in return buffer
+    int chars_in_pipe_buffer = pipe_buffer->size; //number of chars we can read
+    while((buffer_index != size) && (chars_in_pipe_buffer > 0))
+    {
+      //while there is room to read and space in the buffer to read to:
+      ((char *)buffer)[buffer_index] = pipe_buffer->buffer[read_index];      
+      read_index = (read_index + 1) % PIPE_BUFFER_SIZE;
+      buffer_index++;
+      chars_in_pipe_buffer--;
+    }
+    //update inforamtion in pipe buffer struct
+    pipe_buffer->start = read_index;
+    pipe_buffer->size = chars_in_pipe_buffer;
+    bytes_read = buffer_index;
+  }
+  else
+  {
+    //invalid FD
     lock_release(&filesys_lock);
     return -1;
   }
-
-  struct file *file = (thread_current()->fds)[fd];
-  if(file == NULL)
-  {
-    //this FD is not in use right now
-    lock_release(&filesys_lock);
-    return -1;
-  }
-
-
-  int bytes_read = file_read(file, buffer, size);
   lock_release(&filesys_lock);
   return bytes_read;
 }
@@ -335,37 +394,71 @@ read (int fd, void *buffer, unsigned size)
 static int 
 write (int fd, const void *buffer, unsigned size)
 {
+  lock_acquire(&filesys_lock);
   if (!verify_ptr(buffer) || !verify_ptr(buffer + size))
     exit(-1);
 
-  //check for valid FD number
-  if(!verify_fd(fd))
-    return -1;
-
-  lock_acquire(&filesys_lock);
-  if (fd == 0) 
+  int bytes_written;
+  if(fd >= 0 && fd < MAX_FD)
   {
-    lock_release(&filesys_lock);
-    return -1;
-  }
+    //case where we are writing to a normal file
+    if (fd == 0) 
+    {
+      lock_release(&filesys_lock);
+      return -1;
+    }
 
-  if (fd == 1)
-  {
-    putbuf (buffer, size);
-    lock_release(&filesys_lock);
-    return size;
-  }
-
+    if (fd == 1)
+    {
+      putbuf (buffer, size);
+      lock_release(&filesys_lock);
+      return size;
+    }
   
-  struct file *file = (thread_current()->fds)[fd];  
-  //make sure FD points to an open file
-  if(!file)
+    struct file *file = (thread_current()->fds)[fd];  
+    //make sure FD points to an open file
+    if(!file)
+    {
+      lock_release(&filesys_lock);
+      return -1;
+    }
+
+    bytes_written = file_write(file, buffer, size);
+  }
+  else if((fd >= 0) && (fd < (MAX_FD + MAX_PIPES * 2)))
   {
+    //case where the FD is part of a pipe
+    if(fd % 2 == 0)
+    {
+      //even pipe FDs are for reading ends of the pipe, you can't write to it!
+      lock_release(&filesys_lock);
+      return -1;
+    }
+
+    int pipe_array_index = (fd - MAX_FD - 1) / 2;
+    struct pipe_buffer *pipe_buffer = pipe_buffer_array[pipe_array_index];
+    int write_index = pipe_buffer->end; //index to write next char
+    uint32_t buffer_index = 0; //index to read next char from
+    int chars_in_pipe_buffer = pipe_buffer->size; //how many chars are currently in the pipe_buffer
+    while((chars_in_pipe_buffer != PIPE_BUFFER_SIZE) && (buffer_index != size))
+    {
+      //while there are chars left to write and room in the buffer to write them:
+      pipe_buffer->buffer[write_index] = ((char *)buffer)[buffer_index];
+      write_index = (write_index + 1) % PIPE_BUFFER_SIZE;
+      buffer_index++;
+      chars_in_pipe_buffer++;
+    }
+    //update information in our pipe buffer struct
+    pipe_buffer->end = write_index;
+    pipe_buffer->size = chars_in_pipe_buffer;
+    bytes_written = buffer_index;
+  }
+  else
+  {
+    //invalid FD
     lock_release(&filesys_lock);
     return -1;
   }
-
-  int bytes_written = file_write(file, buffer, size);
   lock_release(&filesys_lock);
   return bytes_written;
 }
@@ -385,18 +478,49 @@ tell (int fd)
 static void 
 close (int fd)
 {
-  if(verify_fd(fd))
+  lock_acquire(&filesys_lock);
+  if((fd >= 0) && (fd < MAX_FD))
   {
+    //case where FD is for a regular file
     struct file *closed = thread_current()->fds[fd];
 
-    lock_acquire(&filesys_lock);
     if (closed != NULL)
     {
       thread_current()->fds[fd] = NULL;
       file_close (closed);
     }
-    lock_release(&filesys_lock);
   }
+  else if((fd >= 0) && (fd < (MAX_FD + MAX_PIPES * 2)))
+  {
+    //case where FD is for a pipe
+    bool read_end = true;
+    if(fd % 2 == 1)
+    {
+      read_end = false;
+      //fd (2x) and (2x + 1) both map to the same pipe_array_index.
+      //one is read end, other is write end
+      fd--;
+    }
+    int pipe_array_index = (fd - MAX_FD) / 2; 
+    struct pipe_buffer *pipe_buffer = pipe_buffer_array[pipe_array_index];
+    if(read_end)
+    {
+      pipe_buffer->fd_read = -1;
+    }
+    else
+    {
+      pipe_buffer->fd_write = -1;
+    }
+
+    //if both ends are closed, free the memory
+    if((pipe_buffer->fd_write == -1) && (pipe_buffer->fd_read == -1))
+    {
+      free(pipe_buffer);
+      pipe_buffer_array[pipe_array_index] = NULL;
+    }
+  }
+  //else invalid FD, nothing to close
+  lock_release(&filesys_lock);
 }
 
 static bool verify_ptr(void *ptr) {
