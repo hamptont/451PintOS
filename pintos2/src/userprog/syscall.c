@@ -176,10 +176,11 @@ dup2 (int old_fd, int new_fd)
   //point the new FD to a copy of old_file
   struct file *new_file = file_reopen(old_file);
 
-  //copy over state from old file into new file
+  //copy over offset from old file to new file
   off_t old_offset = file_tell(old_file);
   file_seek(new_file, old_offset);
 
+  //copy over writeable bit from old file to new file
   bool old_wbit = get_deny_write(old_file);
   if(old_wbit)
   {
