@@ -160,15 +160,6 @@ exec (const char *cmd_line)
 static int 
 dup2 (int old_fd, int new_fd)
 {
-/*
- * It looks like this implementation should work but I don't see any
- * tests that test this syscall???
- *
- * After this function is called, there are multiple FDs pointing to the 
- * same file. Not sure if we have to worry about what happens when one
- * of the FDs call close on it's file, while another FD is still trying
- * to use the file. 
- */
 
   if(old_fd == new_fd)
     return -1;
@@ -182,7 +173,26 @@ dup2 (int old_fd, int new_fd)
   if(old_file == NULL)
     return -1;
 
-  fds[new_fd] = old_file;
+  //point the new FD to a copy of old_file
+  struct file *new_file = file_reopen(old_file);
+
+  //copy over offset from old file to new file
+  off_t old_offset = file_tell(old_file);
+  file_seek(new_file, old_offset);
+
+  //copy over writeable bit from old file to new file
+  bool old_wbit = get_deny_write(old_file);
+  if(old_wbit)
+  {
+    file_allow_write(new_file);
+  }
+  else
+  {
+    file_deny_write(new_file);
+  }
+
+  //point new fd to new file
+  fds[new_fd] = new_file;
 
   return new_fd;
 }
