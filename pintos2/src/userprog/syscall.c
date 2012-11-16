@@ -20,7 +20,7 @@ typedef void *(*handler) (void *arg1, void *arg2, void *arg3);
 static handler syscall_vec[NUM_SYSCALLS];
 
 static void halt (void);
-static int  fork (void);
+static int  fork (struct intr_frame *f);
 static int exec (const char *cmd_line);
 static int dup2 (int old_fd, int new_fd);
 static int pipe (int pipe[2]);
@@ -83,12 +83,15 @@ syscall_handler (struct intr_frame *f)
     {
       exit(-1);
     }
-      
-
-  int ret = syscall_vec[syscall_num](*((sp) + 1),
+     
+  int ret;
+  if (syscall_num == SYS_FORK) {
+    ret = syscall_vec[SYS_FORK](f, NULL, NULL);
+  } else {
+    ret = syscall_vec[syscall_num](*((sp) + 1),
                                      *((sp) + 2),
                                      *((sp) + 3));
-
+  }
   f->eax = ret; 
 }
 
@@ -112,20 +115,24 @@ exit (int status)
 }
 
 static int 
-fork (void)
+fork (struct intr_frame *f)
 {
   int i;
-  struct thread *parent = thread_current();
-  tid_t child_tid = thread_create (parent->name, PRI_DEFAULT, process_fork, NULL);
-  struct thread *child = thread_from_tid(child_tid);
+  //tid_t child_tid = thread_create (parent->name, PRI_DEFAULT, process_fork, NULL);
+  //struct thread *child = thread_from_tid(child_tid);
 
-  child->pagedir = pagedir_create();
+  struct thread *child = create_child_thread ();
+
+  setup_thread_to_return_from_fork (child, f);
+
+  //child->pagedir = pagedir_create();
   //copy over each page write function to loop through pages
   //memcpy(child->pagedir, parent->pagedir, PGSIZE);
-  pagedir_dup (child->pagedir, parent->pagedir);
+  //pagedir_dup (child->pagedir, parent->pagedir);
+  child->pagedir = pagedir_duplicate (thread_current()->pagedir);
 
   //copy over fds 
-  for (i = 0; i < MAX_FD; i++) 
+  /* for (i = 0; i < MAX_FD; i++) 
   {
     if (parent->fds[i] != NULL)
     {
@@ -136,11 +143,12 @@ fork (void)
         file_deny_write (child->fds[i]);
       }
     }
-  }
+  }*/
 
-  sema_up(&child->wait_sema);
+  //sema_up(&child->wait_sema);
 
-  return child_tid;
+  thread_unblock (child);
+  return child->tid;
 }
 
 static int 

@@ -140,7 +140,6 @@ create_child_thread () {
   new_thread->tid = global_allocate_tid();
 
   return new_thread; 
-
 }
 
 /*
