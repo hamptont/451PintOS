@@ -548,6 +548,11 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 }
+   
+/* Globally-accessible version of init_thread() */
+void global_init_thread (struct thread *t, const char *name, int priority) {
+  init_thread (t, name, priority);
+}
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
    returns a pointer to the frame's base. */
@@ -658,7 +663,11 @@ allocate_tid (void)
 
   return tid;
 }
-
+
+tid_t global_allocate_tid (void) {
+  allocate_tid ();
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);

@@ -152,6 +152,7 @@ struct thread
 extern bool thread_mlfqs;
 
 void thread_init (void);
+void global_init_thread (struct thread *, const char *name, int priority);
 void thread_start (void);
 
 void thread_tick (void);
@@ -183,4 +184,5 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+tid_t global_allocate_tid (void);
 #endif /* threads/thread.h */
