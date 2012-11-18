@@ -121,6 +121,8 @@ fork (struct intr_frame *f)
   //tid_t child_tid = thread_create (parent->name, PRI_DEFAULT, process_fork, NULL);
   //struct thread *child = thread_from_tid(child_tid);
 
+  struct thread *parent = thread_current();
+
   struct thread *child = create_child_thread ();
 
   setup_thread_to_return_from_fork (child, f);
@@ -129,10 +131,10 @@ fork (struct intr_frame *f)
   //copy over each page write function to loop through pages
   //memcpy(child->pagedir, parent->pagedir, PGSIZE);
   //pagedir_dup (child->pagedir, parent->pagedir);
-  child->pagedir = pagedir_duplicate (thread_current()->pagedir);
+  child->pagedir = pagedir_duplicate (parent->pagedir);
 
   //copy over fds 
-  /* for (i = 0; i < MAX_FD; i++) 
+  for (i = 0; i < MAX_FD; i++) 
   {
     if (parent->fds[i] != NULL)
     {
@@ -143,7 +145,7 @@ fork (struct intr_frame *f)
         file_deny_write (child->fds[i]);
       }
     }
-  }*/
+  }
 
   //sema_up(&child->wait_sema);
 
