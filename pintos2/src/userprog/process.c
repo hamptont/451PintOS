@@ -75,11 +75,10 @@ process_execute (const char *file_name)
 
   if (t == NULL)
     tid = TID_ERROR;
-    
-  int ret_status = process_wait(t->tid);
-  if (ret_status == -1)
-    tid = TID_ERROR;
-  
+
+  list_push_back(&thread_current()->child_list, &t->child_list_elem);
+  t->parent = thread_current();
+
   /* Frees prog-name after is is used to load the correct file */
   palloc_free_page(prog_name);
   return tid;
@@ -166,7 +165,6 @@ start_process (void *file_name_)
 
   //Tell the parent that the thread has finished loading.
   sema_up(&thread_current()->wait_sema);
-
   palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an
@@ -175,32 +173,6 @@ start_process (void *file_name_)
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
-  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  NOT_REACHED ();
-}
-
-
-void
-process_fork (void)
-{
-  struct intr_frame if_;
-
-  /* Initialize interrupt frame and load executable. */
-  memset (&if_, 0, sizeof if_);
-  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
-  if_.cs = SEL_UCSEG;
-  if_.eflags = FLAG_IF | FLAG_MBS;
-
-  sema_down(&thread_current()->wait_sema);
-
-  if_.eax = 0;
-
-  /* Start the user process by simulating a return from an
- * interrupt, implemented by intr_exit (in
- * threads/intr-stubs.S). Because intr_exit takes all of its
- * arguments on the stack in the form of a `struct intr_frame',
- * we just point the stack pointer (%esp) to our stack frame
- * and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -217,15 +189,20 @@ process_fork (void)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread *child = thread_from_tid (child_tid);
-  int return_val = -1;
-  if (child->parent == thread_current())
-  {
-    sema_down (&child->wait_sema);
-    sema_up (&child->parent_sema);
-    return_val = child->return_status;
-  }
-  return return_val;
+  struct thread *child = thread_from_tid(child_tid);
+
+  //Thread does not exist
+  if (child == NULL)
+    return -1;
+
+  if (child->parent != thread_current())
+    return -1;
+
+  sema_down (&child->wait_sema);
+  
+  sema_up (&child->wait_on_parent);
+
+  return child->return_status;
 }
 
 /* Free the current process's resources. */
@@ -234,37 +211,23 @@ process_exit (void)
 {
   struct thread *cur = thread_current();
   uint32_t *pd;
-  
+  struct list_elem *e;
+
   if (cur->parent != NULL)
   {
     sema_up (&cur->wait_sema);
-    sema_down (&cur->parent_sema);
-    struct list_elem *e;
-    for (e = list_begin (&cur->child_list); e != list_end (&cur->child_list); e = list_next (e))
-    {
-      struct thread *child = list_entry (e, struct thread, child_list_elem);
-      child->parent = NULL;
-    }
-  }
-  
-  sema_up (&cur->wait_sema);
-  if (cur->parent != NULL)
-  {
-    cur->exited = true;
-    sema_down(&cur->wait_sema);
+    sema_down(&cur->wait_on_parent);
+
+    list_remove (&cur->child_list_elem);
   }
  
-  struct list_elem *e;
   for (e = list_begin (&cur->child_list);
        e != list_end (&cur->child_list);
        e = list_next (e))
   {
     struct thread *child = list_entry (e, struct thread, child_list_elem);
     child->parent = NULL;
-    if (child->exited)
-    {
-      sema_up (&child->wait_sema);
-    }
+    sema_up (&child->wait_on_parent);
   }
 
   int i;
