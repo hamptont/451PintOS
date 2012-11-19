@@ -122,15 +122,12 @@ fork (struct intr_frame *f)
   //struct thread *child = thread_from_tid(child_tid);
 
   struct thread *parent = thread_current();
-
   struct thread *child = create_child_thread ();
 
-  setup_thread_to_return_from_fork (child, f);
+  list_push_front (&parent->child_list, &child->child_list_elem);
+  child->parent = parent;
 
-  //child->pagedir = pagedir_create();
-  //copy over each page write function to loop through pages
-  //memcpy(child->pagedir, parent->pagedir, PGSIZE);
-  //pagedir_dup (child->pagedir, parent->pagedir);
+  setup_thread_to_return_from_fork (child, f);
   child->pagedir = pagedir_duplicate (parent->pagedir);
 
   //copy over fds 
@@ -146,8 +143,6 @@ fork (struct intr_frame *f)
       }
     }
   }
-
-  //sema_up(&child->wait_sema);
 
   thread_unblock (child);
   return child->tid;
@@ -258,7 +253,7 @@ pipe (int pipe[2])
 static int 
 wait (int pid)
 {
-  return process_wait(pid); 
+  return process_wait (pid);  
 }
 
 static int 

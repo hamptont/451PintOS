@@ -70,6 +70,9 @@ process_execute (const char *file_name)
   struct thread *t = thread_from_tid (tid);
   sema_down (&t->wait_sema);
 
+  list_push_back (&thread_current()->child_list, &t->child_list_elem);
+  t->parent = thread_current();
+
   if (t == NULL)
     tid = TID_ERROR;
     
@@ -214,25 +217,35 @@ process_fork (void)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread *child = thread_from_tid(child_tid);
-
-  //Thread does not exist
-  if (child == NULL)
-    return -1;
-
-  if (child->return_status != -1)
-    return child->return_status;
-  sema_down (&child->wait_sema);
-
-  return child->return_status;
+  struct thread *child = thread_from_tid (child_tid);
+  int return_val = -1;
+  if (child->parent == thread_current())
+  {
+    sema_down (&child->wait_sema);
+    sema_up (&child->parent_sema);
+    return_val = child->return_status;
+  }
+  return return_val;
 }
 
 /* Free the current process's resources. */
 void
 process_exit (void)
 {
-  struct thread *cur = thread_current ();
+  struct thread *cur = thread_current();
   uint32_t *pd;
+  
+  if (cur->parent != NULL)
+  {
+    sema_up (&cur->wait_sema);
+    sema_down (&cur->parent_sema);
+    struct list_elem *e;
+    for (e = list_begin (&cur->child_list); e != list_end (&cur->child_list); e = list_next (e))
+    {
+      struct thread *child = list_entry (e, struct thread, child_list_elem);
+      child->parent = NULL;
+    }
+  }
   
   sema_up (&cur->wait_sema);
   if (cur->parent != NULL)
