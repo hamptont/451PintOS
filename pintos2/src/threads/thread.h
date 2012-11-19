@@ -131,19 +131,18 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct semaphore wait_sema;
+    struct semaphore wait_on_parent;
 
     bool exited;
     struct list child_list;
     struct list_elem child_list_elem;
     struct thread *parent;
     struct file *program;
+    struct file *fds[128];
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-    /* List of open File's.  FD[4] = the File represented by FD 4 */
-    struct file *fds[128];
   };
 
 /* If false (default), use round-robin scheduler.
