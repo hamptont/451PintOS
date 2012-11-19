@@ -77,6 +77,11 @@ process_execute (const char *file_name)
   list_push_back(&thread_current()->child_list, &t->child_list_elem);
   t->parent = thread_current();
 
+  int ret_status =  process_wait(tid);
+  if (ret_status == -1)
+    tid = TID_ERROR;
+ 
+
   /* Frees prog-name after is is used to load the correct file */
   palloc_free_page(prog_name);
   return tid;
