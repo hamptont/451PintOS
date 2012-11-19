@@ -19,7 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 
-static thread_func start_process_exec NO_RETURN;
+static int start_process_exec(void *file_name_);
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -126,8 +126,7 @@ process_exec (const char *file_name)
   memcpy (thread_current()->name, prog_name, 16);
   palloc_free_page (prog_name);
   /* Frees prog-name after is is used to load the correct file */
-  start_process_exec (fn_copy);
-  return tid;
+  return start_process_exec (fn_copy);
 }
 
 /* A thread function that loads a user process and starts it
@@ -223,7 +222,7 @@ start_process (void *file_name_)
 
 /* A thread function that loads a user process and starts it
    running. */
-static void
+static int
 start_process_exec (void *file_name_)
 {
   char *file_name = file_name_;
@@ -263,7 +262,7 @@ start_process_exec (void *file_name_)
   if (!success) 
     {
       palloc_free_page (file_name);
-      thread_exit ();
+      return -1;
     }
 
   //Copy file_name into the stack
@@ -307,7 +306,7 @@ start_process_exec (void *file_name_)
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
-  NOT_REACHED ();
+  return 0;
 }
 
 
