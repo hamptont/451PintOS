@@ -349,10 +349,13 @@ process_exit (void)
 
   if (cur->parent != NULL)
   {
-    sema_up (&cur->wait_sema);
-    sema_down(&cur->wait_on_parent);
 
     list_remove (&cur->child_list_elem);
+    thread_current()->parent = NULL;
+    sema_up (&cur->wait_sema);
+    
+    sema_down(&cur->wait_on_parent);
+
   }
  
   for (e = list_begin (&cur->child_list);
