@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 
+static thread_func start_process_exec NO_RETURN;
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -81,6 +82,54 @@ process_execute (const char *file_name)
   return tid;
 }
 
+/* Starts a new thread running a user program loaded from
+   FILENAME.  The new thread may be scheduled (and may even exit)
+   before process_execute() returns.  Returns the new process's
+   thread id, or TID_ERROR if the thread cannot be created. */
+tid_t
+process_exec (const char *file_name) 
+{
+  char *fn_copy;
+  tid_t tid;
+
+  char *prog_name;
+  char *saveptr;
+
+  /* Make a copy of FILE_NAME.
+     Otherwise there's a race between the caller and load(). */
+  fn_copy = palloc_get_page (0);
+  prog_name = palloc_get_page (0);
+  if (fn_copy == NULL || prog_name == NULL) 
+    {
+      palloc_free_page (fn_copy);
+      palloc_free_page (prog_name);
+      return TID_ERROR;
+    }
+
+  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (prog_name, file_name, PGSIZE);
+
+  prog_name = strtok_r (prog_name, " ", &saveptr);
+
+  struct file *file = filesys_open(prog_name);
+  if (file == NULL)
+    return TID_ERROR;
+
+  thread_current()->program = file;
+  file_deny_write(file);
+
+  /* Create a new thread to execute FILE_NAME. */
+  //thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
+  
+  /* Waits for child thread to finish loading */
+
+  memcpy (thread_current()->name, prog_name, 16);
+  palloc_free_page (prog_name);
+  /* Frees prog-name after is is used to load the correct file */
+  start_process_exec (fn_copy);
+  return tid;
+}
+
 /* A thread function that loads a user process and starts it
    running. */
 static void
@@ -127,7 +176,95 @@ start_process (void *file_name_)
       thread_exit ();
     }
 
+  //Copy file_name into the stack
+  if_.esp -= arg_size;
+  memcpy (if_.esp, file_name, arg_size + 1);
+  void *str_begin = if_.esp;
 
+  //Word Align
+  if_.esp -= 4 - (arg_size % 4);
+
+  //Last Element of argv
+  if_.esp -= 4;
+  *(int *)(if_.esp) = 0;
+
+  //Elements of argv
+  for (i = argc - 1; i >= 0; --i)
+    {
+      if_.esp -= 4;
+      *(void **)(if_.esp) = (void *)((int)str_begin + (int)argv[i]);
+    }
+
+  //Pointer to argv
+  if_.esp -= 4;
+  *(char **)(if_.esp) = (if_.esp + 4); 
+
+  //argc
+  if_.esp -= 4;
+  *(int *)(if_.esp) = argc;
+
+  //Return value
+  if_.esp -= 4;
+  *(int *)(if_.esp) = 0; 
+
+  //Tell the parent that the thread has finished loading.
+  sema_up (&thread_current()->wait_sema);
+  palloc_free_page (file_name);
+
+  /* Start the user process by simulating a return from an
+     interrupt, implemented by intr_exit (in
+     threads/intr-stubs.S).  Because intr_exit takes all of its
+     arguments on the stack in the form of a `struct intr_frame',
+     we just point the stack pointer (%esp) to our stack frame
+     and jump to it. */
+  asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
+  NOT_REACHED ();
+}
+
+/* A thread function that loads a user process and starts it
+   running. */
+static void
+start_process_exec (void *file_name_)
+{
+  char *file_name = file_name_;
+  struct intr_frame if_;
+  bool success;
+
+  char *next_arg;
+  char *save_ptr;
+  int argc;
+  void *argv[128];
+  int arg_size;
+  int i;
+ 
+  /* Initialize interrupt frame and load executable. */
+  memset (&if_, 0, sizeof if_);
+  if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
+  if_.cs = SEL_UCSEG;
+  if_.eflags = FLAG_IF | FLAG_MBS;
+
+  argv[0] = 0;
+  argc = 0;
+  arg_size = strlen(file_name) + 1;
+  next_arg = strtok_r (file_name, " ", &save_ptr);
+
+  while (next_arg != NULL)
+    {
+      while (*save_ptr == ' ')
+        save_ptr++;
+      argc++;
+      argv[argc] = (void *)((int)save_ptr - (int)file_name);
+      next_arg = strtok_r(NULL, " ", &save_ptr);
+    }
+
+
+  success = load (file_name, &if_.eip, &if_.esp);
+  /* If load failed, quit. */
+  if (!success) 
+    {
+      palloc_free_page (file_name);
+      thread_exit ();
+    }
 
   //Copy file_name into the stack
   if_.esp -= arg_size;
@@ -161,7 +298,6 @@ start_process (void *file_name_)
   *(int *)(if_.esp) = 0; 
 
   //Tell the parent that the thread has finished loading.
-  sema_up(&thread_current()->wait_sema);
   palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an
@@ -173,6 +309,7 @@ start_process (void *file_name_)
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
+
 
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an

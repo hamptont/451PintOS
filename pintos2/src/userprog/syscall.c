@@ -151,7 +151,7 @@ exec (const char *cmd_line)
   if(!verify_ptr(cmd_line))
     exit(-1);
 
-  tid_t tid = process_execute(cmd_line);
+  tid_t tid = process_exec(cmd_line);
   if (tid == TID_ERROR)
     return -1;
   return tid;
