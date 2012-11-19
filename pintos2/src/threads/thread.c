@@ -540,6 +540,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->return_status = -1;
   sema_init(&t->wait_sema, 0);
   sema_init(&t->wait_on_parent, 0);
+  sema_init(&t->load_sema, 0);
   list_init(&t->child_list);
   t->parent = NULL;
   t->program = NULL;

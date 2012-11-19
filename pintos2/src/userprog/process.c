@@ -69,7 +69,7 @@ process_execute (const char *file_name)
 
   /* Waits for child thread to finish loading */
   struct thread *t = thread_from_tid (tid);
-  sema_down (&t->wait_sema);
+  sema_down (&t->load_sema);
 
   if (t == NULL)
     tid = TID_ERROR;
@@ -172,7 +172,7 @@ start_process (void *file_name_)
   if (!success) 
     {
       palloc_free_page (file_name);
-      sema_up (&thread_current()->wait_sema);
+      sema_up (&thread_current()->load_sema);
       thread_exit ();
     }
 
@@ -208,7 +208,7 @@ start_process (void *file_name_)
   *(int *)(if_.esp) = 0; 
 
   //Tell the parent that the thread has finished loading.
-  sema_up (&thread_current()->wait_sema);
+  sema_up (&thread_current()->load_sema);
   palloc_free_page (file_name);
 
   /* Start the user process by simulating a return from an

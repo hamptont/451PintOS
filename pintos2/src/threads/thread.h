@@ -132,6 +132,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     struct semaphore wait_sema;
     struct semaphore wait_on_parent;
+    struct semaphore load_sema;
 
     bool exited;
     struct list child_list;
