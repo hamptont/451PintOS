@@ -70,9 +70,6 @@ process_execute (const char *file_name)
   struct thread *t = thread_from_tid (tid);
   sema_down (&t->wait_sema);
 
-  list_push_back (&thread_current()->child_list, &t->child_list_elem);
-  t->parent = thread_current();
-
   if (t == NULL)
     tid = TID_ERROR;
 
