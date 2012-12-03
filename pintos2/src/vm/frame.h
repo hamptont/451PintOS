@@ -19,6 +19,4 @@ void frame_init (void);
 struct frame *frame_get_page(enum palloc_flags);
 void frame_free_page (void *);
 
-
-
 #endif /* vm/frame.h */

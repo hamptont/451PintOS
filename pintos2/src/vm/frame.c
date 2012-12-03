@@ -31,7 +31,20 @@ struct frame *frame_get_page(enum palloc_flags flags)
 
 void frame_free_page (void *page)
 {
+  struct list_elem *e;
+  struct frame *frame;
+  for (e = list_begin (&frame_list); e != list_end (&frame_list);
+       e = list_next (e))
+    {
+      frame = list_entry (e, struct frame, frame_elem);
 
+      if (frame->page == page) {
+        list_remove (frame_elem);
+      }
+      free (frame);
+    }
+
+  palloc_free_page(page);
 }
 
 static void *frame_replace_page (void) 
