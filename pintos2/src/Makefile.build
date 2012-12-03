@@ -66,6 +66,9 @@ userprog_SRC += userprog/forkutils.c	# fork utilities
 
 # No virtual memory code yet.
 #vm_SRC = vm/file.c			# Some file.
+vm_SRC = vm/frame.c 
+vm_SRC += vm/page.c
+vm_SRC += swap.c
 
 # Filesystem code.
 filesys_SRC  = filesys/filesys.c	# Filesystem core.
