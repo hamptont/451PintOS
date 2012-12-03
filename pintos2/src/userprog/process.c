@@ -149,6 +149,10 @@ start_process (void *file_name_)
   void *argv[128];
   int arg_size;
   int i;
+
+  //init supplement page table
+  //TODO: Need to write hash and comparitor functions to init hash table
+//  hash_init(&(thread_current()->suppl_page_table), hash_bytes, hash_less, NULL); 
  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
