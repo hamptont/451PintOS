@@ -38,8 +38,8 @@ void frame_free_page (void *page)
     {
       frame = list_entry (e, struct frame, frame_elem);
 
-      if (frame->page == page) {
-        list_remove (frame_elem);
+      if (frame->page == page && frame->thread == thread_current()) {
+        list_remove (&frame->frame_elem);
       }
       free (frame);
     }
