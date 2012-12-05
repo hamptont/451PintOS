@@ -22,8 +22,8 @@ struct suppl_pte sup_pt_lookup(uint32_t *vaddr)
 }
 
 /*
- * Adds suplemental page entries to supplemental page table for each 
- * page in a file
+ * Adds a suplemental page entry to the suppl page table.
+ * This function supports adding pages from a file
  */ 
 bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t bytes_read, bool writable)
 {
@@ -41,7 +41,8 @@ bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t
   pte->writable = writable;
  
   struct thread *t = thread_current();
-  //can't get this to compile for some reason
+  //can't get this to compile
+  //need to add page to thread_current()'s suppl hash table
   /*
   struct hash_elem *success = hash_insert(&t->suppl_page_table, &pte->elem);
   if(success != NULL)
