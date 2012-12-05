@@ -6,9 +6,16 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+
+enum suppl_pte_type{
+  SWAP = 1,
+  FILE = 2,
+  MMF = 3
+};
+
 struct suppl_pte{
   void *vaddr; //user virtural address for page
-  enum suppl_pte_type;  //type of data stored in pte
+  enum suppl_pte_type type;  //type of data stored in pte
   struct hash_elem elem; //to look up pte in hash table
 
   //data about PTE
@@ -18,13 +25,9 @@ struct suppl_pte{
   bool writable;
 };
 
-enum suppl_pte_type{
-  SWAP = 1,
-  FILE = 2,
-  MMF = 3
-};
 
 struct suppl_pte sup_pt_lookup(uint32_t *vaddr);
+bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t bytes_read, bool writable);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
 #endif /* vm/page.h */
