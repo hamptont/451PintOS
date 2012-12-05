@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 static int start_process_exec(void *file_name_);
 static thread_func start_process NO_RETURN;
@@ -152,8 +153,7 @@ start_process (void *file_name_)
   int i;
 
   //init supplement page table
-  //TODO: Need to write hash and comparitor functions to init hash table
-//  hash_init(&(thread_current()->suppl_page_table), hash_bytes, hash_less, NULL); 
+  hash_init(&(thread_current()->suppl_page_table), page_hash, page_less, NULL);
  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);

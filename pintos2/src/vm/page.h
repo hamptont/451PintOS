@@ -25,5 +25,6 @@ enum suppl_pte_type{
 };
 
 struct suppl_pte sup_pt_lookup(uint32_t *vaddr);
-
+unsigned page_hash (const struct hash_elem *p_, void *aux);
+bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
 #endif /* vm/page.h */
