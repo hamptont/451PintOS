@@ -14,19 +14,13 @@ struct suppl_pte *vaddr_to_suppl_pte(struct hash *hash, uint32_t *vaddr)
   struct suppl_pte pte;
   pte.vaddr = vaddr;
   
-  struct hash_elem *elem = find_hash(hash, &(pte.elem));
+  struct hash_elem *hash_elem = hash_find(hash, &(pte.elem));
   
   if(elem != NULL)
   {
-
+    return hash_entry(hash_elem, struct suppl_pte, elem);
   }
-    
-//  struct hash suppl_pt = thread_current()->supple_page_table;
-  //look up pte in current_thread
-//  struct hash_elem *elem = hash_find(suppl_pt,  
-
-  return &pte;
-
+  return NULL;
 }
 
 /* Load Page */
@@ -66,6 +60,15 @@ bool load_page_mmf(struct suppl_pte *pte)
 }
 
 /*
+ * Insert a suppl_pte into the hash table
+ * Returns true on success, false on failure
+ */
+bool insert_suppl_pte(struct hash *hash, struct suppl_pte *pte)
+{
+  return false;
+}
+
+/*
  * Adds a suplemental page entry to the suppl page table.
  * This function supports adding pages from a file.
  * Returns true on success, false on failure
@@ -98,6 +101,10 @@ bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t
   return true;
 }
 
+/***********************************/
+// functions for the hash table    //
+/**********************************/
+
 /* 
  * Functional required by hash table
  * Returns a hash value for suppl_pte p 
@@ -112,7 +119,6 @@ unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED)
  * Functional required by hash table
  * Returns true if page a precedes page b 
  */
-
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
 {
   const struct suppl_pte *a = hash_entry(a_, struct suppl_pte, elem);
