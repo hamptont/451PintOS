@@ -9,8 +9,9 @@
  * Returns the struct suppl_pte for the virtural address
  * Retuns NULL if it does not exist in the hash table
  */
-struct suppl_pte *vaddr_to_suppl_pte(struct hash *hash, uint32_t *vaddr)
+struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr)
 {
+  struct hash *hash = thread_current()->suppl_page_table;
   struct suppl_pte pte;
   pte.vaddr = vaddr;
   
@@ -51,6 +52,18 @@ bool load_page_swap(struct suppl_pte *pte)
 
 bool load_page_file(struct suppl_pte *pte)
 {
+  struct thread *t = thread_current();
+  
+  int8_t *kpage = vm_allocate_frame(PAL_USER);
+  if(kpage == NULL)
+  {
+    return false;
+  }
+
+  //load the page with info from suppl_pte
+  
+  
+
   return false;
 }
 

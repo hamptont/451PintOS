@@ -30,7 +30,7 @@ bool load_page(struct suppl_pte *pte);
 bool load_page_swap(struct suppl_pte *pte);
 bool load_page_file(struct suppl_pte *pte);
 bool load_page_mmf(struct suppl_pte *pte);
-struct suppl_pte *vaddr_to_suppl_pte(struct hash *hash, uint32_t *vaddr);
+struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr);
 bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t bytes_read, bool writable);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
