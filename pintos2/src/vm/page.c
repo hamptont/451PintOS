@@ -4,22 +4,65 @@
 #include <stdio.h>
 #include <string.h>
 
-
 /*
  * Looks up a virtural address in the supplemental page table. 
  * Returns the struct suppl_pte for the virtural address
- * Retuns NULL on invalild virtural address
+ * Retuns NULL if it does not exist in the hash table
  */
-struct suppl_pte sup_pt_lookup(uint32_t *vaddr)
+struct suppl_pte *vaddr_to_suppl_pte(struct hash *hash, uint32_t *vaddr)
 {
   struct suppl_pte pte;
+  pte.vaddr = vaddr;
   
+  struct hash_elem *elem = find_hash(hash, &(pte.elem));
+  
+  if(elem != NULL)
+  {
+
+  }
+    
 //  struct hash suppl_pt = thread_current()->supple_page_table;
   //look up pte in current_thread
 //  struct hash_elem *elem = hash_find(suppl_pt,  
 
-  return pte;
+  return &pte;
 
+}
+
+/* Load Page */
+bool load_page(struct suppl_pte *pte)
+{
+  //find type of file
+  enum suppl_pte_type type = pte->type;
+  if(type == SWAP)
+  {
+    return load_page_swap(pte);  
+  }
+  else if(type == FILE)
+  {
+    return load_page_file(pte);
+  }
+  else if(type == MMF)
+  {
+    return load_page_mmf(pte);
+  }
+  //should not be reached
+  return false;
+}
+
+bool load_page_swap(struct suppl_pte *pte)
+{
+  return false;
+}
+
+bool load_page_file(struct suppl_pte *pte)
+{
+  return false;
+}
+
+bool load_page_mmf(struct suppl_pte *pte)
+{
+  return false;
 }
 
 /*
@@ -56,7 +99,7 @@ bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t
 }
 
 /* 
- * Functionality required by hash table
+ * Functional required by hash table
  * Returns a hash value for suppl_pte p 
  */
 unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED)
@@ -66,7 +109,7 @@ unsigned page_hash (const struct hash_elem *p_, void *aux UNUSED)
 }
 
 /*
- * Functionality required by hash table
+ * Functional required by hash table
  * Returns true if page a precedes page b 
  */
 
