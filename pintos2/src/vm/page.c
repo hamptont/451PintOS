@@ -16,7 +16,7 @@ struct suppl_pte *vaddr_to_suppl_pte(struct hash *hash, uint32_t *vaddr)
   
   struct hash_elem *hash_elem = hash_find(hash, &(pte.elem));
   
-  if(elem != NULL)
+  if(hash_elem != NULL)
   {
     return hash_entry(hash_elem, struct suppl_pte, elem);
   }
