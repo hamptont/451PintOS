@@ -11,11 +11,11 @@
  */
 struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr)
 {
-  struct hash *hash = thread_current()->suppl_page_table;
+  struct hash *suppl_page_table = thread_current()->suppl_page_table;
   struct suppl_pte pte;
   pte.vaddr = vaddr;
   
-  struct hash_elem *hash_elem = hash_find(hash, &(pte.elem));
+  struct hash_elem *hash_elem = hash_find(suppl_page_table, &(pte.elem));
   
   if(hash_elem != NULL)
   {
