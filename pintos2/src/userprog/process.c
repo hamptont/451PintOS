@@ -677,6 +677,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
+  file_seek (file, ofs);
+
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -705,7 +707,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           return false; 
         }
 */
-      if(!suppl_pt_insert_file ((uint32_t)upage, file, ofs, page_read_bytes, writable)) {
+      if(!suppl_pt_insert_file ((uint32_t)upage, file, ofs, page_read_bytes, page_zero_bytes, writable))
+      {
         return false;
       }
 
@@ -716,7 +719,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       upage += PGSIZE;
     }
 
-  file_seek (file, ofs);
   return true;
 }
 

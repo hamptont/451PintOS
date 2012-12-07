@@ -6,6 +6,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/frame.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -129,7 +131,7 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
-  void *fault_page = 0xfffff000 & fault_addr; //Masked fault address
+//  void *fault_page = 0xfffff000 & fault_addr; //Masked fault address
 
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -152,10 +154,29 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-/*
-  if (user)
+  //load the page table entry from the suppl page table
+  uint32_t *vaddr = pg_round_down(fault_addr);
+  struct suppl_pte *pte = vaddr_to_suppl_pte(vaddr);
+
+  enum suppl_pte_type type = pte->type;
+ 
+   
+  if(pte != NULL)
+  {
+    bool success =load_page(pte);
+    if(success)
+    {
+      printf("SUCCESS\n");
+    }
+    else
+    {
+      printf("FAILURE\n");
+    }
+  }
+  else if(user)
+  {
     exit(-1);
-*/
+  }
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */

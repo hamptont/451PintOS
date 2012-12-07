@@ -2,6 +2,8 @@
 #include "lib/kernel/hash.h"
 #include "threads/thread.h"
 #include "threads/malloc.h"
+#include "userprog/pagedir.h"
+#include "vm/frame.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -57,6 +59,7 @@ bool load_page_file(struct suppl_pte *pte)
   
 /*
   int8_t *kpage = vm_allocate_frame(PAL_USER);
+
   if(kpage == NULL)
   {
     return false;
@@ -64,9 +67,32 @@ bool load_page_file(struct suppl_pte *pte)
 */
   //load the page with info from suppl_pte
   
+  //get page of memory
+  uint8_t *kpage = frame_get_page (PAL_USER)->page; 
+  if(kpage == NULL)
+  {
+    return false;
+  }  
   
+  //load page
+  if(file_read(pte->file, kpage, pte->bytes_read) != (int)pte->bytes_read)
+  {  
+    frame_free_page(kpage);
+    return false;
+  }
+  memset(kpage + pte->bytes_read, 0, pte->bytes_zero);
 
-  return false;
+  bool install_page = (pagedir_get_page(t->pagedir, pte->vaddr) == NULL)
+		&& (pagedir_set_page (t->pagedir, pte->vaddr, kpage, pte->writable));
+
+  //add page to process's address space
+  if(!install_page)
+  {
+    frame_free_page(kpage);
+    return false;
+  }  
+
+  return true;
 }
 
 bool load_page_mmf(struct suppl_pte *pte)
@@ -89,7 +115,7 @@ bool insert_suppl_pte(struct suppl_pte *pte)
  * This function supports adding pages from a file.
  * Returns true on success, false on failure
  */ 
-bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t bytes_read, bool writable)
+bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable)
 {
   struct suppl_pte *pte  = calloc(1, sizeof (struct suppl_pte));
   if(pte == NULL)

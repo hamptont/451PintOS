@@ -21,7 +21,8 @@ struct suppl_pte{
   //data about PTE
   struct file *file;
   off_t file_offset;
-  uint32_t bytes_read;
+  size_t bytes_read;
+  size_t bytes_zero;
   bool writable;
 };
 
@@ -32,7 +33,7 @@ bool load_page_file(struct suppl_pte *pte);
 bool load_page_mmf(struct suppl_pte *pte);
 struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr);
 bool insert_suppl_pte(struct suppl_pte *pte);
-bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, uint32_t bytes_read, bool writable);
+bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
 #endif /* vm/page.h */
