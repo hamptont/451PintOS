@@ -1,6 +1,7 @@
 #include "vm/page.h"
 #include "lib/kernel/hash.h"
 #include "threads/thread.h"
+#include "threads/malloc.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -77,8 +78,9 @@ bool load_page_mmf(struct suppl_pte *pte)
  * Insert a suppl_pte into the hash table
  * Returns true on success, false on failure
  */
-bool insert_suppl_pte(struct hash *hash, struct suppl_pte *pte)
+bool insert_suppl_pte(struct suppl_pte *pte)
 {
+  
   return false;
 }
 
