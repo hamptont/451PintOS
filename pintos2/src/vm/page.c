@@ -11,11 +11,11 @@
  */
 struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr)
 {
-  struct hash *hash = thread_current()->suppl_page_table;
+  struct hash suppl_page_table = thread_current()->suppl_page_table;
   struct suppl_pte pte;
   pte.vaddr = vaddr;
   
-  struct hash_elem *hash_elem = hash_find(hash, &(pte.elem));
+  struct hash_elem *hash_elem = hash_find(&suppl_page_table, &(pte.elem));
   
   if(hash_elem != NULL)
   {
@@ -54,12 +54,13 @@ bool load_page_file(struct suppl_pte *pte)
 {
   struct thread *t = thread_current();
   
+/*
   int8_t *kpage = vm_allocate_frame(PAL_USER);
   if(kpage == NULL)
   {
     return false;
   }
-
+*/
   //load the page with info from suppl_pte
   
   
