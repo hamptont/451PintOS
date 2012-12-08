@@ -4,6 +4,8 @@
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
+#include "filesys/file.h"
+#include "filesys/inode.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -55,28 +57,35 @@ bool load_page_swap(struct suppl_pte *pte)
 
 bool load_page_file(struct suppl_pte *pte)
 {
-  struct thread *t = thread_current();
-  
-/*
-  int8_t *kpage = vm_allocate_frame(PAL_USER);
 
-  if(kpage == NULL)
-  {
-    return false;
-  }
-*/
+  struct thread *t = thread_current();
+ 
+  file_seek(pte->file, pte->file_offset); 
+
+  uint32_t bytes_read = pte->bytes_read;
+  uint32_t bytes_zero = pte->bytes_zero;
+  
   //load the page with info from suppl_pte
   
   //get page of memory
-  uint8_t *kpage = frame_get_page (PAL_USER)->page; 
+  uint8_t *kpage = frame_get_page (PAL_USER); 
   if(kpage == NULL)
   {
     return false;
   }  
   
   //load page
-  if(file_read(pte->file, kpage, pte->bytes_read) != (int)pte->bytes_read)
-  {  
+  off_t b_read = file_read(pte->file, kpage, pte->bytes_read);
+  off_t expected_b_read = pte->bytes_read;
+  off_t of = file_tell(pte->file);
+  printf("&&&&&&&&&&&&&&&&&&&&&& bytes read:  %d\n", b_read);
+  printf("&&&&&&&&&&&&& expected bytes read: %d\n", expected_b_read);
+  printf("&&&&&&&&&&&&&&&&&&&&& file offset:  %d\n", of);
+  struct file *f = pte->file;
+  
+  if(b_read != expected_b_read)
+  { 
+    printf("Should not go here \n");
     frame_free_page(kpage);
     return false;
   }
@@ -91,7 +100,7 @@ bool load_page_file(struct suppl_pte *pte)
     frame_free_page(kpage);
     return false;
   }  
-
+  pte->loaded = true;
   return true;
 }
 
@@ -115,23 +124,27 @@ bool insert_suppl_pte(struct suppl_pte *pte)
  * This function supports adding pages from a file.
  * Returns true on success, false on failure
  */ 
-bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable)
+//bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable)
+bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint32_t bytes_read, uint32_t bytes_zero, bool writable)
 {
-  struct suppl_pte *pte  = calloc(1, sizeof (struct suppl_pte));
+//  struct suppl_pte *pte  = calloc(1, sizeof (struct suppl_pte));
+  struct suppl_pte *pte  = malloc(sizeof (struct suppl_pte));
   if(pte == NULL)
   {
+    printf("MALLOC FAILED!!!\n");
     return false;
   }
- 
+
+  printf("OFFFFFFFFFFFFFFFF %d\n", vaddr); 
   //store info about the file in the suppl page table
   pte->vaddr = vaddr;
   pte->type = FILE;
   pte->file = file;
   pte->file_offset = offset;
   pte->bytes_read = bytes_read;
+  pte->bytes_zero = bytes_zero;
   pte->writable = writable;
-
- 
+  pte->loaded = false;
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();
   struct hash suppl_page_table = t->suppl_page_table;
