@@ -167,14 +167,6 @@ page_fault (struct intr_frame *f)
   if(pte != NULL && !pte->loaded)
   {
     bool success = load_page(pte);
-    if(success)
-    {
-      printf("SUCCESS\n");
-    }
-    else
-    {
-      printf("FAILURE\n");
-    }
   }
   else if(user)
   {
@@ -182,7 +174,6 @@ page_fault (struct intr_frame *f)
   }
   else
   {
-    printf("NULLLLLLLLLLLLLLLL\n");
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */

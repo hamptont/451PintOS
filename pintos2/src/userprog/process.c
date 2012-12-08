@@ -247,6 +247,8 @@ start_process_exec (void *file_name_)
   int arg_size;
   int i;
  
+  hash_init(&(thread_current()->suppl_page_table), page_hash, page_less, NULL);
+  
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -712,7 +714,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
        }
 */
      //add file to suppl page table  
-     if(!suppl_pt_insert_file (upage, file, ofs, page_read_bytes, page_zero_bytes, writable))
+     if(!suppl_pt_insert_file (upage, file_reopen(file), ofs, page_read_bytes, page_zero_bytes, writable))
       {
         return false;
       }

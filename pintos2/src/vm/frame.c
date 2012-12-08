@@ -67,11 +67,12 @@ void frame_free_page (void *page)
        e = list_next (e))
     {
       frame = list_entry (e, struct frame, frame_elem);
-/*
+      
+      /* 
       if (frame->page == page && frame->tid == thread_current()->tid) {
         list_remove (&frame->frame_elem);
       }
-*/
+      */
       free (frame);
     }
 

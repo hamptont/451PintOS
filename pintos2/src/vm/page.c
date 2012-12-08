@@ -78,14 +78,10 @@ bool load_page_file(struct suppl_pte *pte)
   off_t b_read = file_read(pte->file, kpage, pte->bytes_read);
   off_t expected_b_read = pte->bytes_read;
   off_t of = file_tell(pte->file);
-  printf("&&&&&&&&&&&&&&&&&&&&&& bytes read:  %d\n", b_read);
-  printf("&&&&&&&&&&&&& expected bytes read: %d\n", expected_b_read);
-  printf("&&&&&&&&&&&&&&&&&&&&& file offset:  %d\n", of);
   struct file *f = pte->file;
   
   if(b_read != expected_b_read)
   { 
-    printf("Should not go here \n");
     frame_free_page(kpage);
     return false;
   }
@@ -131,11 +127,9 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   struct suppl_pte *pte  = malloc(sizeof (struct suppl_pte));
   if(pte == NULL)
   {
-    printf("MALLOC FAILED!!!\n");
     return false;
   }
 
-  printf("OFFFFFFFFFFFFFFFF %d\n", vaddr); 
   //store info about the file in the suppl page table
   pte->vaddr = vaddr;
   pte->type = FILE;
