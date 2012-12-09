@@ -23,6 +23,7 @@ struct suppl_pte{
   off_t file_offset;
   uint32_t bytes_read;
   uint32_t bytes_zero;
+  size_t swap_index;
   bool writable;
   bool loaded;
 };
