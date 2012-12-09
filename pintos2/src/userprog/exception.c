@@ -131,6 +131,11 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
+  struct suppl_pte *pte;
+  void *esp;
+  uint32_t fault_page;
+  struct thread *cur = thread_current();
+
 //  void *fault_page = 0xfffff000 & fault_addr; //Masked fault address
 
   /* Obtain faulting address, the virtual address that was
@@ -154,44 +159,40 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-  if (f->esp - fault_addr <= 32 && f->esp - fault_addr > 0 && f->esp < PHYS_BASE)
-  {
-    uint8_t *kpage;
-    bool success = false;
+  esp = f->esp;
+  pte = vaddr_to_suppl_pte(pg_round_down(fault_addr));
 
-    kpage = frame_get_page (PAL_USER | PAL_ZERO);
-    if (kpage != NULL) 
-      {
-        struct thread *t = thread_current();
-        t->esp -= PGSIZE;
-        success = (pagedir_get_page (t->pagedir, t->esp) == NULL
-                && pagedir_set_page (t->pagedir, t->esp, kpage, true));
-        if (!success)
-          frame_free_page (kpage);
-      }
-      return;
-  }
+  //Still need to consider maximum stack size
+  bool stack =  (fault_addr < PHYS_BASE) && (fault_addr + 32 >= esp);
 
-  if(fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
-  {
-    exit(-1);
-  }
-
-   //load the page table entry from the suppl page table
-//  uint32_t *vaddr = pg_round_down(fault_addr);
-  struct suppl_pte *pte = vaddr_to_suppl_pte(pg_round_down(fault_addr));
-
-//  enum suppl_pte_type type = pte->type;
-  if(pte != NULL && !pte->loaded)
-  {
-    bool success = load_page(pte);
-  }
-  else if(user)
-  {
-    exit(-1);
-  }
+  if (pte != NULL || stack) {
+    uint32_t kpage = frame_get_page (PAL_USER | PAL_ZERO);
+    if (kpage == NULL) 
+    {
+      exit(-1);
+    }
+  
+    if (pte != NULL) 
+    {
+      load_page(pte);
+    } else {
+      cur->esp -= PGSIZE;
+      bool success = (pagedir_get_page (cur->pagedir, cur->esp) == NULL
+                   && pagedir_set_page (cur->pagedir, cur->esp, kpage, true));
+      if (!success)
+        frame_free_page (kpage);
+    }
+  } 
   else
   {
+    if (user)
+      exit(-1);
+
+    if(fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
+    {
+      exit(-1);
+    }
+
     /* To implement virtual memory, delete the rest of the function
        body, and replace it with code that brings in the page to
        which fault_addr refers. */
@@ -203,4 +204,3 @@ page_fault (struct intr_frame *f)
     kill (f);
   }
 }
-
