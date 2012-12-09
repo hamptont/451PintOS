@@ -154,6 +154,24 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+  if (f->esp - fault_addr <= 32 && f->esp - fault_addr > 0 && f->esp < PHYS_BASE)
+  {
+    uint8_t *kpage;
+    bool success = false;
+
+    kpage = frame_get_page (PAL_USER | PAL_ZERO);
+    if (kpage != NULL) 
+      {
+        struct thread *t = thread_current();
+        t->esp -= PGSIZE;
+        success = (pagedir_get_page (t->pagedir, t->esp) == NULL
+                && pagedir_set_page (t->pagedir, t->esp, kpage, true));
+        if (!success)
+          frame_free_page (kpage);
+      }
+      return;
+  }
+
   if(fault_addr == NULL || !not_present || !is_user_vaddr(fault_addr))
   {
     exit(-1);

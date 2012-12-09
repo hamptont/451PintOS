@@ -186,6 +186,8 @@ start_process (void *file_name_)
       thread_exit ();
     }
 
+  thread_current()->esp = PHYS_BASE - PGSIZE;
+
   //Copy file_name into the stack
   if_.esp -= arg_size;
   memcpy (if_.esp, file_name, arg_size + 1);

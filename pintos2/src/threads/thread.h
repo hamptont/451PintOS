@@ -143,10 +143,12 @@ struct thread
     struct file *fds[128];
 #endif
 
+    struct hash suppl_page_table;      /* Supplemental page table */
+    void *esp;
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
 
-    struct hash suppl_page_table;      /* Supplemental page table */
   };
 
 /* If false (default), use round-robin scheduler.
