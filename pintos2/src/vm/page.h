@@ -8,9 +8,9 @@
 
 
 enum suppl_pte_type{
-  SWAP = 1,
-  FILE = 2,
-  MMF = 3
+  SWAP = 001,
+  FILE = 002,
+  MMF = 004
 };
 
 struct mm_file{
@@ -31,9 +31,11 @@ struct suppl_pte{
   off_t file_offset;
   uint32_t bytes_read;
   uint32_t bytes_zero;
+  size_t swap_index;
   bool writable;
   bool loaded;
 
+<<<<<<< HEAD
 //  struct mm_file mm_file;
 //  struct mm_file mmf;
   //MMF stuff
@@ -43,12 +45,14 @@ struct suppl_pte{
 //  struct hash_elem mmf_elem;
 };
 
+=======
+>>>>>>> a872d754ff075f96b6b7919bea574ccdada61770
 bool load_page(struct suppl_pte *pte);
 bool load_page_swap(struct suppl_pte *pte);
 bool load_page_file(struct suppl_pte *pte);
 bool load_page_mmf(struct suppl_pte *pte);
 struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr);
-bool insert_suppl_pte(struct suppl_pte *pte);
+bool insert_suppl_pte(struct hash *, struct suppl_pte *pte);
 //bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable);
 bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint32_t bytes_read, uint32_t bytes_zero, bool writable);
 bool suppl_pt_insert_mmf(struct file *f, off_t offset, uint8_t *upage, uint32_t read_bytes, uint32_t zero_bytes, int id);

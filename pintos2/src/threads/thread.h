@@ -142,10 +142,10 @@ struct thread
     struct file *program;
     struct file *fds[128];
 #endif
-    //next id to use for mm_file number    
     int next_id;
 
     struct hash suppl_page_table;      /* Supplemental page table */
+<<<<<<< HEAD
     struct hash mm_files;           /*Stored active mem mapped files */
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

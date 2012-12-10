@@ -9,7 +9,8 @@ struct frame
 {
 //  void *page;
 //  struct thread *thread;
-  uint32_t *pte; 
+  uint32_t *pte;
+  void *uvaddr;
   void *frame;
   tid_t tid;
   struct list_elem frame_elem;
@@ -21,5 +22,6 @@ struct lock frame_lock;
 void frame_init (void);
 void *frame_get_page(enum palloc_flags);
 void frame_free_page (void *);
-static bool add_frame(void *f);
+void frame_set_user_page (void *, void *, uint32_t *);
+
 #endif /* vm/frame.h */
