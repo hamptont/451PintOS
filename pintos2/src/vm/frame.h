@@ -16,6 +16,7 @@ struct frame
 
 struct list frame_list;
 struct lock frame_lock;
+struct lock evict_lock;
 
 void frame_init (void);
 void *frame_get_page(enum palloc_flags);

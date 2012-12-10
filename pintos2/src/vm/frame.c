@@ -11,7 +11,6 @@
 #include <stdio.h>
 
 static void *frame_replace_page (void);
-static struct lock evict_lock;
 static struct list_elem *hand;
 
 static bool add_frame (void *);
@@ -91,6 +90,7 @@ static bool add_frame(void *f)
   return true;
 }
 
+/* Evicts a frame from the frame list */
 static void *frame_replace_page () 
 {
   struct frame *evict_frame;
@@ -99,7 +99,6 @@ static void *frame_replace_page ()
   lock_acquire (&evict_lock);
 
   evict_frame = select_evictee ();
-  printf ("Evicted frame: %x\n", evict_frame->uvaddr);
   if (evict_frame == NULL)
     printf ("CAN'T SELECT FRAME TO EVICT");
 
@@ -113,6 +112,8 @@ static void *frame_replace_page ()
   return evict_frame;
 }
 
+/* Uses the clock algorithm to select a frame to be
+ * evicted from the frame list */
 static struct frame *select_evictee (void)
 {
   struct thread *t;
@@ -124,8 +125,10 @@ static struct frame *select_evictee (void)
   if (hand == NULL)
   {
     hand = list_head (&frame_list);
+    list_remove (list_next (hand));
     hand = list_next (hand);
   }
+  uint32_t round = 0;
   while (!selected)
   {
     e = hand;
@@ -150,6 +153,10 @@ static struct frame *select_evictee (void)
   return current_frame;
 }
 
+/* Depending on what type of page is held by the
+ * frame that is being evicted, some bookkeeping is
+ * done to keep track of where in swap the evicted 
+ * memory page is going, etc */
 static bool save_frame (struct frame *evict_frame)
 {
   struct thread *t;
@@ -194,6 +201,7 @@ static bool save_frame (struct frame *evict_frame)
   return true;
 }
 
+/* Sets the page table entry and the virtual address of the frame */
 void frame_set_user_page (void *frame, void *upage, uint32_t *pte)
 {
   struct frame *temp_frame;
@@ -205,6 +213,8 @@ void frame_set_user_page (void *frame, void *upage, uint32_t *pte)
   }
 }
 
+/* Gets a frame struct from the frame list by passing in the 
+ * starting address of its memory frame */
 static struct frame *get_frame (void *frame)
 {
   struct frame *ret_frame;
