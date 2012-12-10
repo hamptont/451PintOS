@@ -4,6 +4,7 @@
 #include "threads/malloc.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
 #include <stdio.h>
@@ -50,9 +51,33 @@ bool load_page(struct suppl_pte *pte)
   return false;
 }
 
-bool load_page_swap(struct suppl_pte *pte)
+bool load_page_swap(struct suppl_pte *spte)
 {
-  return false;
+  uint8_t *kpage = frame_get_page (PAL_USER);
+
+  if (kpage == NULL)
+    return false;
+
+  if (!pagedir_set_page (thread_current ()->pagedir, spte->vaddr, 
+        kpage, spte->writable))
+  {
+    frame_free_page (kpage);
+    return false;
+  }
+
+  swap_to_mem (spte->swap_index, spte->vaddr);
+
+  if (spte->type == SWAP)
+  {
+    hash_delete (&thread_current()->suppl_page_table, &spte->elem);
+  }
+  if (spte->type == (FILE | SWAP)) 
+  {
+    spte->type = FILE;
+    spte->loaded = true;
+  }
+
+  return true;
 }
 
 bool load_page_file(struct suppl_pte *pte)
@@ -109,10 +134,16 @@ bool load_page_mmf(struct suppl_pte *pte)
  * Insert a suppl_pte into the hash table
  * Returns true on success, false on failure
  */
-bool insert_suppl_pte(struct suppl_pte *pte)
+bool insert_suppl_pte(struct hash *pt, struct suppl_pte *pte)
 {
-  
-  return false;
+  if (pte == NULL)
+    return false;
+
+  struct hash_elem *result = hash_insert (pt, &(pte->elem));
+  if (result != NULL)
+    return false;
+
+  return true;
 }
 
 /*
