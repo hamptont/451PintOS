@@ -14,12 +14,8 @@ static block_sector_t num_pages_in_swap (void);
 void init_swap_table (void)
 {
   swap_device = block_get_role (BLOCK_SWAP);
-  if (swap_device == NULL)
-    printf ("NO SWAP DEVICE FOUND");
 
   swap_map = bitmap_create (num_pages_in_swap ());
-  if (swap_map == NULL)
-    printf ("SWAP MAP CREATION FAILED");
 
   bitmap_set_all (swap_map, false);
 }

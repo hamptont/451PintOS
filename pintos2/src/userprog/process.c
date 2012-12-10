@@ -126,9 +126,6 @@ process_exec (const char *file_name)
   thread_current()->program = file;
   file_deny_write(file);
 
-  /* Create a new thread to execute FILE_NAME. */
-  //thread_create (prog_name, PRI_DEFAULT, start_process, fn_copy);
-  
   /* Waits for child thread to finish loading */
 
   memcpy (thread_current()->name, prog_name, 16);
@@ -427,7 +424,7 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
@@ -693,30 +690,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
          and zero the final PAGE_ZERO_BYTES bytes. */
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
-/*
-      bool old = true;
-      if(old){
-//      * Get a page of memory. *
-      uint8_t *kpage = frame_get_page (PAL_USER)->page;
-      if (kpage == NULL)
-        return false;
 
-//      * Load this page. *
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          frame_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
-//      * Add the page to the process's address space. *
-      if (!install_page (upage, kpage, writable)) 
-        {
-          frame_free_page (kpage);
-          return false; 
-        }
-       }
-*/
      //add file to suppl page table  
      if(!suppl_pt_insert_file (upage, file_reopen(file), ofs, page_read_bytes, page_zero_bytes, writable))
       {
@@ -741,7 +715,6 @@ setup_stack (void **esp)
   bool success = false;
 
   kpage = frame_get_page(PAL_USER | PAL_ZERO);
-//  kpage = frame_get_page(PAL_USER | PAL_ZERO)->page;
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);

@@ -7,8 +7,6 @@
 
 struct frame 
 {
-//  void *page;
-//  struct thread *thread;
   uint32_t *pte;
   void *uvaddr;
   void *frame;

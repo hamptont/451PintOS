@@ -54,27 +54,8 @@ void *frame_get_page(enum palloc_flags flags)
   else
   {
     frame = frame_replace_page ();
-    if (frame == NULL)
-      printf ("FRAME EVICT FAILED");
   }
   return frame;
-
-/* 
-  struct frame *frame;
-  void *page = palloc_get_page(flags);
-  if (page == NULL) 
-  {
-    page = frame_replace_page();
-  } 
-
-  frame = malloc (sizeof (struct frame));
-  frame->page = page;
-  frame->thread = thread_current();
-
-  list_push_back (&frame_list, &frame->frame_elem);
-    
-  return frame;
-*/
 }
 
 void frame_free_page (void *page)
@@ -86,11 +67,6 @@ void frame_free_page (void *page)
     {
       frame = list_entry (e, struct frame, frame_elem);
       
-      /* 
-      if (frame->page == page && frame->tid == thread_current()->tid) {
-        list_remove (&frame->frame_elem);
-      }
-      */
       free (frame);
     }
 
