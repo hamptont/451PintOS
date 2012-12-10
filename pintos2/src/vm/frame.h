@@ -23,5 +23,6 @@ void frame_init (void);
 void *frame_get_page(enum palloc_flags);
 void frame_free_page (void *);
 void frame_set_user_page (void *, void *, uint32_t *);
+void frame_remove_thread (struct thread *);
 
 #endif /* vm/frame.h */

@@ -246,3 +246,25 @@ static struct frame *get_frame (void *frame)
   lock_release (&frame_lock);
   return ret_frame;
 }
+
+
+void frame_remove_thread (struct thread *t)
+{
+  lock_acquire (&frame_lock);
+  struct list_elem *e;
+  struct frame *frame;
+  for (e = list_begin (&frame_list); e != list_end (&frame_list);
+       e = list_next (e))
+    {
+      frame = list_entry (e, struct frame, frame_elem);
+      
+      if (frame->tid == t->tid) {
+        list_remove (&frame->frame_elem);
+      }
+
+      palloc_free_page(frame->uvaddr);
+      free (frame);
+    }
+
+  lock_release (&frame_lock);
+}

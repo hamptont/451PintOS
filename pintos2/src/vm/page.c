@@ -185,7 +185,7 @@ bool insert_suppl_pte(struct hash *pt, struct suppl_pte *pte)
   if (pte == NULL)
     return false;
 
-  printf ("Inserted frame: %x\n", pte->vaddr);
+  //printf ("Inserted frame: %x\n", pte->vaddr);
   struct hash_elem *result = hash_insert (pt, &(pte->elem));
   if (result != NULL)
     return false;
@@ -217,7 +217,7 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   pte->writable = writable;
   pte->loaded = false;
 
-  printf ("Inserted file: %x\n", pte->vaddr);
+  //printf ("Inserted file: %x\n", pte->vaddr);
 
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();
