@@ -565,7 +565,6 @@ static bool verify_fd(int fd)
 
 static mapid_t mmap(int fd, void *addr)
 {
-//  printf("MMAP CALLED!\n");
   //check for valid fd
   if(fd < 2 || fd >= MAX_FD)
   {
@@ -583,8 +582,10 @@ static mapid_t mmap(int fd, void *addr)
   {
     return -1;
   }
+
   //fail on
-  //page of pages mapped overlaps any existing set of mapped pages, including the stack or pages mapped at executable load time
+  //page of pages mapped overlaps any existing set of mapped pages, 
+  //including the stack or pages mapped at executable load time
   struct thread *t = thread_current();
   struct file *file = t->fds[fd];
   if(file == NULL)
@@ -647,7 +648,8 @@ static mapid_t mmap(int fd, void *addr)
       bytes = PGSIZE;
     }
     uint32_t zero_bytes = PGSIZE - bytes;
-    bool insert = suppl_pt_insert_mmf(mmf_file, index, addr, bytes, zero_bytes, id);  
+    bool insert = suppl_pt_insert_mmf(mmf_file, index, addr, 
+                                      bytes, zero_bytes, id);  
 
     if(!insert)
     {

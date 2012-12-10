@@ -150,9 +150,7 @@ start_process (void *file_name_)
   int arg_size;
   int i;
 
-  //init supplement page table
   hash_init(&(thread_current()->suppl_page_table), page_hash, page_less, NULL);
-  //init mm_files hash
   hash_init(&(thread_current()->mm_files), mmf_hash, mmf_less, NULL);
 
   /* Initialize interrupt frame and load executable. */
