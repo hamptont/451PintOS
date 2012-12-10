@@ -36,6 +36,7 @@ static int write (int fd, const void *buffer, unsigned size);
 static unsigned tell (int fd);
 static void close (int fd);
 static int create (const char *file, unsigned initial_size);
+static bool remove (const char *file_name);
 
 static bool verify_ptr(void *ptr);
 static bool verify_fd(int fd);
@@ -67,6 +68,7 @@ syscall_init (void)
   syscall_vec[SYS_CREATE] = (handler)create;
   syscall_vec[SYS_MMAP] = (handler)mmap;
   syscall_vec[SYS_MUNMAP] = (handler)munmap;
+  syscall_vec[SYS_REMOVE] = (handler)remove;
 
   lock_init (&filesys_lock);
 
@@ -722,4 +724,16 @@ static void munmap(mapid_t mapping)
     file_close(mm_file); 
     lock_release(&filesys_lock);
   }
+}
+
+bool remove (const char *file_name)
+{
+  if(!verify_ptr(file_name))
+  {
+    exit(-1);
+  }
+  lock_acquire(&filesys_lock);
+  bool success = filesys_remove(file_name); 
+  lock_release(&filesys_lock);
+  return success;
 }
