@@ -35,13 +35,10 @@ struct suppl_pte{
   bool writable;
   bool loaded;
 
-//  struct mm_file mm_file;
-//  struct mm_file mmf;
   //MMF stuff
   int mm_id;
   void *start_addr;
   int pg_count;
-//  struct hash_elem mmf_elem;
 };
 
 bool load_page(struct suppl_pte *pte);
@@ -50,7 +47,6 @@ bool load_page_file(struct suppl_pte *pte);
 bool load_page_mmf(struct suppl_pte *pte);
 struct suppl_pte *vaddr_to_suppl_pte(uint32_t *vaddr);
 bool insert_suppl_pte(struct hash *, struct suppl_pte *pte);
-//bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable);
 bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint32_t bytes_read, uint32_t bytes_zero, bool writable);
 bool suppl_pt_insert_mmf(struct file *f, off_t offset, uint8_t *upage, uint32_t read_bytes, uint32_t zero_bytes, int id);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
