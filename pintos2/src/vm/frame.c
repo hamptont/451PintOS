@@ -123,7 +123,7 @@ static void *frame_replace_page ()
   lock_acquire (&evict_lock);
 
   evict_frame = select_evictee ();
-  printf ("Evicted frame: %x\n", evict_frame->frame);
+  printf ("Evicted frame: %x\n", evict_frame->uvaddr);
   if (evict_frame == NULL)
     printf ("CAN'T SELECT FRAME TO EVICT");
 
@@ -195,7 +195,7 @@ static bool save_frame (struct frame *evict_frame)
 
   if (pagedir_is_dirty (t->pagedir, spte->vaddr) && (spte->type == MMF))
   {
-    // write back to file
+    write_back_mmf (spte);
   }
   else if (pagedir_is_dirty (t->pagedir, spte->vaddr) || (spte->type != FILE))
   {

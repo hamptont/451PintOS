@@ -143,8 +143,6 @@ main (void)
 #endif
 #ifdef VM
   frame_init ();
-  //locate_block_devices ();
-  //init_swap_table ();
 #endif
 
   /* Start thread scheduler and enable interrupts. */
@@ -164,6 +162,9 @@ main (void)
   ide_init ();
   locate_block_devices ();
   filesys_init (format_filesys);
+#ifdef VM
+  init_swap_table ();
+#endif
 #endif
 
   printf ("Boot complete.\n");

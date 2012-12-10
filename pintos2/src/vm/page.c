@@ -35,7 +35,7 @@ bool load_page(struct suppl_pte *pte)
 {
   //find type of file
   enum suppl_pte_type type = pte->type;
-  if(type == SWAP)
+  if(type & SWAP)
   {
     return load_page_swap(pte);  
   }
@@ -70,7 +70,6 @@ bool load_page_swap(struct suppl_pte *spte)
   }
 
   swap_to_mem (spte->swap_index, spte->vaddr);
-
   if (spte->type == SWAP)
   {
     hash_delete (&thread_current()->suppl_page_table, &spte->elem);
@@ -129,6 +128,15 @@ bool load_page_file(struct suppl_pte *pte)
   return true;
 }
 
+void write_back_mmf (struct suppl_pte *spte)
+{
+  if (spte->type == MMF)
+  {
+    file_seek (spte->file, spte->file_offset);
+    file_write (spte->file, spte->vaddr, spte->bytes_read);
+  }
+}
+
 bool load_page_mmf(struct suppl_pte *pte)
 {
   //seek to correct possition in file
@@ -177,6 +185,7 @@ bool insert_suppl_pte(struct hash *pt, struct suppl_pte *pte)
   if (pte == NULL)
     return false;
 
+  printf ("Inserted frame: %x\n", pte->vaddr);
   struct hash_elem *result = hash_insert (pt, &(pte->elem));
   if (result != NULL)
     return false;
@@ -207,6 +216,8 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   pte->bytes_zero = bytes_zero;
   pte->writable = writable;
   pte->loaded = false;
+
+  printf ("Inserted file: %x\n", pte->vaddr);
 
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();

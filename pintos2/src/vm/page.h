@@ -57,5 +57,6 @@ unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
 unsigned mmf_hash(const struct hash_elem *p_, void *aux);
 bool mmf_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
+void write_back_mmf (struct suppl_pte *);
 
 #endif /* vm/page.h */
