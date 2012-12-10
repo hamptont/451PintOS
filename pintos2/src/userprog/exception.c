@@ -163,7 +163,9 @@ page_fault (struct intr_frame *f)
   pte = vaddr_to_suppl_pte(pg_round_down(fault_addr));
 
   //Still need to consider maximum stack size
-  bool stack =  (fault_addr < PHYS_BASE) && (fault_addr + 32 >= esp);
+  bool stack =  (fault_addr < PHYS_BASE) 
+             && (fault_addr + 32 >= esp)
+             && (fault_addr > STACK_LIMIT);
 
   if (pte != NULL || stack) {
     uint32_t kpage = frame_get_page (PAL_USER | PAL_ZERO);
