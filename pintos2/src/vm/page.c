@@ -45,10 +45,6 @@ bool load_page(struct suppl_pte *pte)
   }
   else if(type == MMF)
   {
-/*
-    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-*/
     return load_page_mmf(pte);
   }
   //should not be reached
@@ -143,7 +139,7 @@ bool load_page_mmf(struct suppl_pte *pte)
   file_seek(pte->file, pte->file_offset);
 
   //get page from memory
-  uint8_t *kpage = frame_get_page(PAL_USER); //??
+  uint8_t *kpage = frame_get_page(PAL_USER); 
   if(kpage == NULL)
   {
     return false;
@@ -152,8 +148,6 @@ bool load_page_mmf(struct suppl_pte *pte)
   //load page
   off_t b_read = file_read(pte->file, kpage, pte->bytes_read);
   off_t expected_b_read = pte->bytes_read;
-//  off_t of = file_tell(pte->file);
-//  struct file *f = pte->file;
   
   if(b_read != expected_b_read)
   { 
@@ -172,7 +166,6 @@ bool load_page_mmf(struct suppl_pte *pte)
     return false;
   }  
   pte->loaded = true;
-//  printf("DONEEEEEEEEEEEEEEE!!!!!!!!!!!!!!!!!!\n"); 
   return true;
 }
 
@@ -185,7 +178,6 @@ bool insert_suppl_pte(struct hash *pt, struct suppl_pte *pte)
   if (pte == NULL)
     return false;
 
-  printf ("Inserted frame: %x\n", pte->vaddr);
   struct hash_elem *result = hash_insert (pt, &(pte->elem));
   if (result != NULL)
     return false;
@@ -198,7 +190,6 @@ bool insert_suppl_pte(struct hash *pt, struct suppl_pte *pte)
  * This function supports adding pages from a file.
  * Returns true on success, false on failure
  */ 
-//bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable)
 bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint32_t bytes_read, uint32_t bytes_zero, bool writable)
 {
   struct suppl_pte *pte  = malloc(sizeof (struct suppl_pte));
@@ -216,8 +207,6 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   pte->bytes_zero = bytes_zero;
   pte->writable = writable;
   pte->loaded = false;
-
-  printf ("Inserted file: %x\n", pte->vaddr);
 
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();
@@ -246,21 +235,9 @@ bool suppl_pt_insert_mmf(struct file *f, off_t offset, uint8_t *upage, uint32_t 
   pte->bytes_read = read_bytes;
   pte->bytes_zero = zero_bytes;
   pte->loaded = false;
-//  pte->mm_id = id;
-  pte->writable = true; //????
+  pte->writable = true; 
   pte->type = MMF;
-/*
-  struct mm_file e;
-  e.mm_id = id;
 
-  struct hash_elem *hash_elem =  hash_find(&(thread_current()->mm_files), &(e.elem));
-  if(hash_elem == NULL)
-  {
-    return -1;
-  }
-  struct mm_file *mm_file = hash_entry(hash_elem, struct mm_file, elem);
-  pte->mm_file = *mm_file;
-*/
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();
   struct hash suppl_page_table = t->suppl_page_table;

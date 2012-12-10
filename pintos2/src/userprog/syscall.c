@@ -602,7 +602,6 @@ static mapid_t mmap(int fd, void *addr)
   int index = 0;
   while(index < length)
   {
-//    printf("while loop...\n");
     //Make sure the page is not already in the suppl page table or pagedir
     bool suppl_pte_exists = vaddr_to_suppl_pte(addr + index);
     bool pagedir_exists = pagedir_get_page(t->pagedir, addr + index);
@@ -634,13 +633,11 @@ static mapid_t mmap(int fd, void *addr)
   mmap_file->mm_id = id;
   mmap_file->file = file;
   mmap_file->start_addr = addr;
-//  mmap_file->type = MMF;
   index = 0;
   int page_count = 0;
   int bytes;
   while(length > 0)
   {
-//    printf("while loop 2 ...%d\n", length);
     if(length < PGSIZE)
     {
       bytes = length;
@@ -651,12 +648,6 @@ static mapid_t mmap(int fd, void *addr)
     }
     uint32_t zero_bytes = PGSIZE - bytes;
     bool insert = suppl_pt_insert_mmf(mmf_file, index, addr, bytes, zero_bytes, id);  
-    //file
-    //file_offset
-    //bytes_read
-    //bytes_zero
-    //vaddr
-    //writable
 
     if(!insert)
     {
@@ -667,19 +658,9 @@ static mapid_t mmap(int fd, void *addr)
     addr += PGSIZE;
     page_count++;
   }
-//  printf("EXIT WHILE LOOP\n");
   mmap_file->pg_count = page_count;
 
   hash_insert(&t->mm_files, &mmap_file->elem);
-/*
-  struct hash_elem *success = hash_insert(&t->mm_files, &mmap_file->elem);
-  if(success == NULL)
-  {
-    printf("noooooo.....\n");
-    return -1;
-  }
-*/
-//  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~SUCCESS\n");
 
   return id;
 }
@@ -736,4 +717,5 @@ bool remove (const char *file_name)
   bool success = filesys_remove(file_name); 
   lock_release(&filesys_lock);
   return success;
+
 }

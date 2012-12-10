@@ -136,8 +136,6 @@ page_fault (struct intr_frame *f)
   uint32_t fault_page;
   struct thread *cur = thread_current();
 
-//  void *fault_page = 0xfffff000 & fault_addr; //Masked fault address
-
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
