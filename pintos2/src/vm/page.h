@@ -35,7 +35,6 @@ struct suppl_pte{
   bool writable;
   bool loaded;
 
-<<<<<<< HEAD
 //  struct mm_file mm_file;
 //  struct mm_file mmf;
   //MMF stuff
@@ -45,8 +44,6 @@ struct suppl_pte{
 //  struct hash_elem mmf_elem;
 };
 
-=======
->>>>>>> a872d754ff075f96b6b7919bea574ccdada61770
 bool load_page(struct suppl_pte *pte);
 bool load_page_swap(struct suppl_pte *pte);
 bool load_page_file(struct suppl_pte *pte);
