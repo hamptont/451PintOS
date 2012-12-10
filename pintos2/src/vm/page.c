@@ -44,6 +44,10 @@ bool load_page(struct suppl_pte *pte)
   }
   else if(type == MMF)
   {
+/*
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+*/
     return load_page_mmf(pte);
   }
   //should not be reached
@@ -102,7 +106,41 @@ bool load_page_file(struct suppl_pte *pte)
 
 bool load_page_mmf(struct suppl_pte *pte)
 {
-  return false;
+  //seek to correct possition in file
+  file_seek(pte->file, pte->file_offset);
+
+  //get page from memory
+  uint8_t *kpage = frame_get_page(PAL_USER); //??
+  if(kpage == NULL)
+  {
+    return false;
+  } 
+
+  //load page
+  off_t b_read = file_read(pte->file, kpage, pte->bytes_read);
+  off_t expected_b_read = pte->bytes_read;
+//  off_t of = file_tell(pte->file);
+//  struct file *f = pte->file;
+  
+  if(b_read != expected_b_read)
+  { 
+    frame_free_page(kpage);
+    return false;
+  }
+  memset(kpage + pte->bytes_read, 0, pte->bytes_zero);
+
+  struct thread *t = thread_current();
+
+  //load page to current threads address space
+  bool install_page = pagedir_set_page(t->pagedir, pte->vaddr, kpage, true);
+  if(!install_page)
+  {
+    frame_free_page(kpage);
+    return false;
+  }  
+  pte->loaded = true;
+//  printf("DONEEEEEEEEEEEEEEE!!!!!!!!!!!!!!!!!!\n"); 
+  return true;
 }
 
 /*
@@ -123,7 +161,6 @@ bool insert_suppl_pte(struct suppl_pte *pte)
 //bool suppl_pt_insert_file(void *vaddr, struct file *file, off_t offset, size_t bytes_read, size_t bytes_zero, bool writable)
 bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint32_t bytes_read, uint32_t bytes_zero, bool writable)
 {
-//  struct suppl_pte *pte  = calloc(1, sizeof (struct suppl_pte));
   struct suppl_pte *pte  = malloc(sizeof (struct suppl_pte));
   if(pte == NULL)
   {
@@ -139,6 +176,7 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   pte->bytes_zero = bytes_zero;
   pte->writable = writable;
   pte->loaded = false;
+
   //add page to thread_current()'s suppl hash table
   struct thread *t = thread_current();
   struct hash suppl_page_table = t->suppl_page_table;
@@ -150,6 +188,47 @@ bool suppl_pt_insert_file(uint8_t *vaddr, struct file *file, off_t offset, uint3
   return true;
 }
 
+bool suppl_pt_insert_mmf(struct file *f, off_t offset, uint8_t *upage, uint32_t read_bytes, uint32_t zero_bytes, int id)
+{
+  struct suppl_pte *pte  = malloc(sizeof (struct suppl_pte));
+  if(pte == NULL)
+  {
+    return false;
+  }
+
+  //store info about the file in the suppl page table
+  pte->vaddr = upage;
+  pte->type = MMF;
+  pte->file = f;
+  pte->file_offset = offset;
+  pte->bytes_read = read_bytes;
+  pte->bytes_zero = zero_bytes;
+  pte->loaded = false;
+//  pte->mm_id = id;
+  pte->writable = true; //????
+  pte->type = MMF;
+/*
+  struct mm_file e;
+  e.mm_id = id;
+
+  struct hash_elem *hash_elem =  hash_find(&(thread_current()->mm_files), &(e.elem));
+  if(hash_elem == NULL)
+  {
+    return -1;
+  }
+  struct mm_file *mm_file = hash_entry(hash_elem, struct mm_file, elem);
+  pte->mm_file = *mm_file;
+*/
+  //add page to thread_current()'s suppl hash table
+  struct thread *t = thread_current();
+  struct hash suppl_page_table = t->suppl_page_table;
+  struct hash_elem *success = hash_insert(&suppl_page_table, &pte->elem);
+  if(success != NULL)
+  {
+    return false;
+  }
+  return true;
+}
 /***********************************/
 // functions for the hash table    //
 /**********************************/
@@ -173,4 +252,16 @@ bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *au
   const struct suppl_pte *a = hash_entry(a_, struct suppl_pte, elem);
   const struct suppl_pte *b = hash_entry(b_, struct suppl_pte, elem);
   return a->vaddr < b->vaddr;
+}
+
+unsigned mmf_hash(const struct hash_elem *p_, void *aux)
+{
+  const struct mm_file *p = hash_entry(p_, struct mm_file, elem);
+  return hash_bytes(&p->mm_id, sizeof(p->mm_id));
+}
+
+bool mmf_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux){
+  const struct mm_file *a = hash_entry(a_, struct mm_file, elem);
+  const struct mm_file *b = hash_entry(b_, struct mm_file, elem);
+  return a->mm_id < b->mm_id;
 }

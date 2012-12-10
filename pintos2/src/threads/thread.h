@@ -142,11 +142,13 @@ struct thread
     struct file *program;
     struct file *fds[128];
 #endif
-
-    /* Owned by thread.c. */
-    unsigned magic;                     /* Detects stack overflow. */
+    //next id to use for mm_file number    
+    int next_id;
 
     struct hash suppl_page_table;      /* Supplemental page table */
+    struct hash mm_files;           /*Stored active mem mapped files */
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
   };
 
 /* If false (default), use round-robin scheduler.

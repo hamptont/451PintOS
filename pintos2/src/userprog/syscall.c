@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+//#include "lib/user/syscall.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -7,6 +8,7 @@
 #include "threads/vaddr.h"
 #include "userprog/process.h"
 #include "devices/shutdown.h"
+#include "vm/page.h"
 #include <console.h>
 
 #include "filesys/filesys.h"
@@ -18,6 +20,8 @@ static void syscall_handler (struct intr_frame *);
 typedef void *(*handler) (void *arg1, void *arg2, void *arg3);
 
 static handler syscall_vec[NUM_SYSCALLS];
+
+typedef int mapid_t;
 
 static void halt (void);
 static int  fork (struct intr_frame *f);
@@ -32,6 +36,13 @@ static int write (int fd, const void *buffer, unsigned size);
 static unsigned tell (int fd);
 static void close (int fd);
 static int create (const char *file, unsigned initial_size);
+
+static bool verify_ptr(void *ptr);
+static bool verify_fd(int fd);
+
+//mmap files
+static mapid_t mmap(int fd, void *addr);
+static void munmap(mapid_t mapping);
 
 static bool verify_ptr(void *ptr);
 static bool verify_fd(int fd);
@@ -54,6 +65,8 @@ syscall_init (void)
   syscall_vec[SYS_TELL] = (handler)tell;
   syscall_vec[SYS_CLOSE] = (handler)close;
   syscall_vec[SYS_CREATE] = (handler)create;
+  syscall_vec[SYS_MMAP] = (handler)mmap;
+  syscall_vec[SYS_MUNMAP] = (handler)munmap;
 
   lock_init (&filesys_lock);
 
@@ -546,4 +559,167 @@ static bool verify_fd(int fd)
     return false;
   }
   return true;
+}
+
+static mapid_t mmap(int fd, void *addr)
+{
+//  printf("MMAP CALLED!\n");
+  //check for valid fd
+  if(fd < 2 || fd >= MAX_FD)
+  {
+    return -1;
+  }
+
+  //check for valid addr
+  if(addr == NULL || addr == 0x0)
+  {
+    return -1;
+  }
+
+  //check addr is page aligned
+  if(pg_ofs(addr) != 0)
+  {
+    return -1;
+  }
+  //fail on
+  //page of pages mapped overlaps any existing set of mapped pages, including the stack or pages mapped at executable load time
+  struct thread *t = thread_current();
+  struct file *file = t->fds[fd];
+  if(file == NULL)
+  {
+    return -1;
+  }
+  //check valid file length
+  off_t length = file_length(file);
+  if(length <= 0)
+  {
+    return -1;
+  }
+  
+  //check if there is enough space to mmap file
+  int index = 0;
+  while(index < length)
+  {
+//    printf("while loop...\n");
+    //Make sure the page is not already in the suppl page table or pagedir
+    bool suppl_pte_exists = vaddr_to_suppl_pte(addr + index);
+    bool pagedir_exists = pagedir_get_page(t->pagedir, addr + index);
+    if(suppl_pte_exists || pagedir_exists)
+    {
+      return -1;
+    }
+    index += PGSIZE;
+  }
+  lock_acquire(&filesys_lock);
+  struct file *mmf_file = file_reopen(file);
+  lock_release(&filesys_lock);  
+
+  if(mmf_file == NULL)
+  {
+    return -1;
+  }
+
+  //put file in mm_file struct and add to current threads hash of MMFs
+  struct mm_file *mmap_file = malloc(sizeof (struct mm_file));
+  if(mmap_file == NULL)
+  {
+    return -1;
+  }
+
+  mapid_t id = t->next_id;
+  t->next_id = id + 1;
+
+  mmap_file->mm_id = id;
+  mmap_file->file = file;
+  mmap_file->start_addr = addr;
+//  mmap_file->type = MMF;
+  index = 0;
+  int page_count = 0;
+  int bytes;
+  while(length > 0)
+  {
+//    printf("while loop 2 ...%d\n", length);
+    if(length < PGSIZE)
+    {
+      bytes = length;
+    }
+    else
+    {
+      bytes = PGSIZE;
+    }
+    uint32_t zero_bytes = PGSIZE - bytes;
+    bool insert = suppl_pt_insert_mmf(mmf_file, index, addr, bytes, zero_bytes, id);  
+    //file
+    //file_offset
+    //bytes_read
+    //bytes_zero
+    //vaddr
+    //writable
+
+    if(!insert)
+    {
+      return -1;
+    }
+    index += PGSIZE;
+    length -= PGSIZE;
+    addr += PGSIZE;
+    page_count++;
+  }
+//  printf("EXIT WHILE LOOP\n");
+  mmap_file->pg_count = page_count;
+
+  hash_insert(&t->mm_files, &mmap_file->elem);
+/*
+  struct hash_elem *success = hash_insert(&t->mm_files, &mmap_file->elem);
+  if(success == NULL)
+  {
+    printf("noooooo.....\n");
+    return -1;
+  }
+*/
+//  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~SUCCESS\n");
+
+  return id;
+}
+
+static void munmap(mapid_t mapping)
+{
+  struct mm_file mm_file_lookup;
+  mm_file_lookup.mm_id = mapping;
+  struct thread *t = thread_current();
+  struct hash_elem *elem = hash_delete(&t->mm_files, &mm_file_lookup.elem);
+  if(elem != NULL)
+  {
+    struct mm_file *mm_file = hash_entry(elem, struct mm_file, elem);
+    
+    int pg_count = mm_file->pg_count;
+    void *start_addr = mm_file->start_addr;
+    int count = 0;
+    while(pg_count > 0)
+    {
+      //look up each page in suppl_pt and remove
+      struct suppl_pte pte;
+      pte.vaddr = start_addr + count * PGSIZE; 
+      struct hash_elem *elem = hash_delete(&t->suppl_page_table, &pte.elem);
+      if(elem != NULL)
+      {
+        struct suppl_pte *pte_ptr = hash_entry(elem, struct suppl_pte, elem);
+        if(pte_ptr->loaded && pagedir_is_dirty(t->pagedir, pte_ptr->vaddr))
+        {
+          //write back to disk
+          lock_acquire(&filesys_lock);
+          file_seek(pte_ptr->file, pte_ptr->file_offset);
+          file_write(pte_ptr->file, pte_ptr->vaddr, pte_ptr->bytes_read);
+  
+
+          lock_release(&filesys_lock);
+        }
+      }
+      pg_count--;
+      count++;
+    }
+    lock_acquire(&filesys_lock);
+    file_close(mm_file); 
+    lock_release(&filesys_lock);
+  }
 }
